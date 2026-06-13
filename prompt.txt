@@ -1,0 +1,5 @@
+Jarvis Tech Lead, actúa como jefe de equipo para el proyecto 'erika_manicura'. \
+1. Evalúa la arquitectura requerida para un CRM de salón de belleza. \
+2. Instruye al Dev Agent (aef9af03acba) para que cree la estructura de carpetas en /workspace/erika_manicura/backend/. \
+3. Coordina con el Dev Agent la creación inmediata de 'database.py' y 'models.py'. \
+4. Informa a mí sobre el estado. ¡Coordina la ejecución ahora!

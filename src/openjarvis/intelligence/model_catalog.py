@@ -298,7 +298,7 @@ BUILTIN_MODELS: List[ModelSpec] = [
     # Local models — Qwen3.5 (MoE, Gated DeltaNet + sparse MoE)
     # -----------------------------------------------------------------------
     ModelSpec(
-        model_id="qwen3.5:4b",
+        model_id="llama3.1:8b",
         name="Qwen3.5 4B",
         parameter_count_b=4.0,
         active_parameter_count_b=0.5,

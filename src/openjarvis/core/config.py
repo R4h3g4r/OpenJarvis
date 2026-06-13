@@ -275,7 +275,7 @@ def _available_memory_gb(hw: HardwareInfo) -> float:
 # only a fraction of parameters are active per token.
 _MODEL_TIERS = [
     (8, "qwen3.5:2b"),
-    (16, "qwen3.5:4b"),
+    (16, "llama3.1:8b"),
     (32, "qwen3.5:9b"),
     (64, "qwen3.5:27b"),
 ]
