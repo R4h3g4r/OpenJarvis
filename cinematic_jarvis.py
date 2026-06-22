@@ -206,7 +206,8 @@ def main():
                 try:
                     # Importamos dinámicamente y ejecutamos el sprint de desarrollo
                     from run_cell import run_software_factory
-                    run_software_factory(ruta_proyecto, tarea_celula)
+                    flujo_forzado = "desarrollo" if is_exec_plan else None
+                    run_software_factory(ruta_proyecto, tarea_celula, force_flow=flujo_forzado)
                     
                     # Al terminar, avisamos al señor
                     speak("Sprint de desarrollo finalizado con éxito, señor. El código ha sido programado de forma autónoma con Qwen 2.5 Coder, auditado rigurosamente por el Analista de Calidad y documentado en el README de su espacio de trabajo. Puede revisar la carpeta 'erika_manicura' ahora mismo.")

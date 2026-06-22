@@ -31,6 +31,39 @@ def es_tarea_analisis(tarea: str) -> bool:
     keywords = ["revis", "analiz", "analic", "plan", "mejora", "sugerencia", "estudi", "auditar", "diagnóstico", "reporte", "observaciones"]
     return any(keyword in tarea.lower() for keyword in keywords)
 
+def detectar_lenguajes_proyecto(ruta: str) -> str:
+    """Detecta de forma programática y física qué lenguajes y frameworks están activos en el workspace."""
+    has_python = False
+    has_react = False
+    has_typescript = False
+    
+    ruta_norm = os.path.abspath(ruta)
+    if not os.path.exists(ruta_norm):
+        return "Python y React"
+        
+    for root, dirs, files in os.walk(ruta_norm):
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', '__pycache__', '.venv']]
+        for f in files:
+            ext = os.path.splitext(f)[1].lower()
+            if ext == '.py':
+                has_python = True
+            elif ext in ['.tsx', '.jsx']:
+                has_react = True
+            elif ext == '.ts':
+                has_typescript = True
+                
+    langs = []
+    if has_python:
+        langs.append("Python (Backend, típicamente FastAPI y SQLAlchemy)")
+    if has_react:
+        langs.append("React con TypeScript/Vite" if has_typescript else "React con JavaScript/Vite")
+    elif has_typescript:
+        langs.append("TypeScript")
+        
+    if not langs:
+        return "Python (para backend) y React/TypeScript (para frontend)"
+    return " y ".join(langs)
+
 def obtener_contexto_codigo(ruta: str) -> str:
     """Explora recursivamente el proyecto y extrae un contexto ultra-enfocado de alta densidad, apto para Ollama."""
     tree_lines = []
@@ -100,6 +133,10 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
         border_style="green"
     ))
     
+    # Detectamos de forma física los lenguajes activos del proyecto
+    lenguajes_reales = detectar_lenguajes_proyecto(ruta)
+    console.print(f"[bold green]🔍 Lenguajes detectados físicamente en el proyecto:[/bold green] [bold white]{lenguajes_reales}[/bold white]")
+    
     # Determinamos el tipo de flujo de forma robusta o forzada
     if force_flow is not None:
         tipo_flujo = force_flow
@@ -128,24 +165,27 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             prompt_arquitecto = f"""
             Eres el Arquitecto de Software Senior de la célula.
             Tu misión es realizar un análisis del código fuente y de la estructura de archivos inyectada a continuación, 
-            para diseñar un PLAN TÉCNICO DE MEJORAS Y ARQUITECTURA 100% orientado a código (Python y React).
+            para diseñar un PLAN TÉCNICO DE MEJORAS Y ARQUITECTURA 100% orientado a código.
             
             REQUERIMIENTO DEL USUARIO: {tarea}
+            
+            --- LENGUAJES ACTIVOS REALES DETECTADOS EN EL PROYECTO ---
+            Este proyecto está programado e implementado ÚNICAMENTE en: {lenguajes_reales}
             
             --- CONTEXTO COMPLETO DEL PROYECTO LOCAL ---
             {codigo_contexto}
             --- FIN DEL CONTEXTO ---
             
             Instrucciones de contenido estricto:
-            - ATENCIÓN: Como puedes ver en el contexto, el proyecto está programado en Python (backend) y React (frontend).
-            - ESTÁ COMPLETAMENTE PROHIBIDO proponer soluciones en Java, Maven, XML o cualquier lenguaje que no coincida con el proyecto inyectado.
+            - ATENCIÓN ABSOLUTA: El proyecto utiliza de forma real {lenguajes_reales}. 
+            - ESTÁ COMPLETAMENTE PROHIBIDO proponer soluciones en Java, Maven, pom.xml, C# o lenguajes que no coincidan con los activos detectados ({lenguajes_reales}). Toda tu propuesta debe estar alineada estrictamente con los lenguajes reales detectados.
             - NO propongas discursos corporativos, de capacitación de equipos o de recursos humanos.
-            - Sé sumamente técnico, concreto y específico. Menciona nombres de archivos reales de Python y React del proyecto, imports y rutas.
+            - Sé sumamente técnico, concreto y específico. Menciona nombres de archivos reales del proyecto, imports y rutas.
             - Estructura tu reporte de arquitectura detallando:
-              1. DIAGNÓSTICO DE ESTRUCTURA Y ARCHIVOS: Analiza la jerarquía de archivos de Python y React inyectada. Propón una reestructuración limpia si es necesario.
-              2. REVISIÓN CRÍTICA DE BACKEND (PYTHON / FASTAPI): Evalúa la calidad, imports, controladores y base de datos en los archivos python inyectados.
+              1. DIAGNÓSTICO DE ESTRUCTURA Y ARCHIVOS: Analiza la jerarquía de archivos inyectada. Propón una reestructuración limpia si es necesario.
+              2. REVISIÓN CRÍTICA DE BACKEND (PYTHON / FASTAPI / SQLALCHEMY): Evalúa la calidad, imports, controladores y base de datos en los archivos python inyectados.
               3. REVISIÓN CRÍTICA DE FRONTEND (REACT / VITE / TS): Evalúa el uso de componentes, hooks de datos, llamadas de API y package.json de React inyectados.
-              4. MEJORAS DE CÓDIGO ESPECÍFICAS: Describe los cambios exactos de lógica de programación por cada archivo (ej: configurar routers en main.py, refactorizar estados en App.tsx).
+              4. MEJORAS DE CÓDIGO ESPECÍFICAS: Describe los cambios exactos de lógica de programación por cada archivo, respetando los lenguajes originales del proyecto.
             """
             
             # Inferencia directa sin ReAct, 100% veloz y confiable, sin timeouts
@@ -163,6 +203,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Eres el Analista QA Senior de la célula con 20 años de experiencia en auditoría técnica.
             Tu misión es auditar críticamente el plan de mejoras propuesto por el Arquitecto sobre el código real inyectado.
             
+            --- LENGUAJES ACTIVOS REALES DETECTADOS EN EL PROYECTO ---
+            {lenguajes_reales}
+            
             --- CONTEXTO COMPLETO DEL PROYECTO LOCAL ---
             {codigo_contexto}
             
@@ -171,12 +214,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             --- FIN DEL PLAN ---
             
             Instrucciones de auditoría técnica:
-            - ATENCIÓN: El proyecto está en Python y React. No audites ni propongas soluciones en Java, Maven o XML.
-            - Concéntrate exclusivamente en la viabilidad del código, excepciones, imports rotos, fallos de compilación, linters y tipos de datos de Python/React.
-            - Genera un REPORTE TÉCNICO DE AUDITORÍA QA detallando:
-              1. BUGS POTENCIALES Y RIESGOS LÓGICOS en las propuestas del Arquitecto.
-              2. ROBUSTEZ DE CÓDIGO REQUERIDA: Propón manejos de excepciones específicos (Try/Except en Python, Try-Catch en JS/React) y asincronía.
-              3. ESPECIFICACIÓN DE PRUEBAS AUTOMATIZADAS: Sugiere pruebas específicas unitarias o de integración para asegurar que las mejoras no rompan el proyecto en Python/React.
+            - ATENCIÓN: El proyecto está en {lenguajes_reales}. No audites ni propongas soluciones en Java, Maven, pom.xml o lenguajes incorrectos.
+            - Concéntrate exclusivamente en la viabilidad del código, excepciones, imports rotos, fallos de compilación, linters y tipos de datos del proyecto ({lenguajes_reales}).
+            - Genera un REPORTE DE AUDITORÍA riguroso indicando si apruebas el plan y qué riesgos identificas.
             """
             
             reporte_qa = j.ask(prompt_qa, model=model_code) # Usamos el modelo ultra-experto en lógica
@@ -192,26 +232,22 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             
             mejores_path = os.path.join(ruta, "PLAN_DE_MEJORAS.md")
             prompt_doc = f"""
-            Eres el Technical Writer Senior. Tu trabajo es consolidar las propuestas del Arquitecto y la auditoría de QA en un documento final Markdown (PLAN_DE_MEJORAS.md)
-            que sirva como un PLAN TÉCNICO DE INGENIERÍA PURO, 100% accionable para que un desarrollador de software se ponga a codificar de inmediato.
+            Eres el Technical Writer Senior. Tu trabajo es consolidar la información en un formato profesional Markdown.
+            Escribe un documento final ordenado y estructurado con un tono pulido e industrial.
             
-            --- PLAN DE MEJORAS PROPUESTO (ARQUITECTO) ---
+            --- PLAN DE MEJORAS PROPUESTO ---
             {plan_arquitecto}
             
             --- REPORTE DE AUDITORÍA DE QA ---
             {reporte_qa}
             
-            Instrucciones de redacción técnica:
-            - PROHIBIDO proponer nada que no sea Python (FastAPI/SQLAlchemy) y React (TypeScript). Este es un proyecto de Python y React, no uses Java ni Maven ni XML.
-            - PROHIBIDO utilizar jerga de marketing, administración o capacitación. El tono debe ser puramente de ingeniería de software.
-            - Estructura el archivo PLAN_DE_MEJORAS.md exactamente con estas secciones:
-              1. DIAGNÓSTICO TÉCNICO DE CALIDAD DE CÓDIGO (Hallazgos puntuales en los archivos de Python y React reales).
-              2. ARQUITECTURA DE ARCHIVOS PROPUESTA (Árbol visual de carpetas modificado).
-              3. PLAN DE REFACCIÓN BACKEND PYTHON / FASTAPI (Lógica exacta de código, imports, rutas, controladores y bases de datos).
-              4. PLAN DE REFACCIÓN FRONTEND REACT / TYPESCRIPT (Estructura de componentes, hooks de datos, llamadas a API y package.json).
-              5. ESPECIFICACIÓN DE SEGURIDAD Y CONTROL QA (Pruebas unitarias, excepciones try/except, linters y tipados estáticos).
+            Genera un archivo Markdown completo que contenga:
+            1. Resumen Ejecutivo del Análisis.
+            2. Áreas de Oportunidad Identificadas (Puntos Débiles basados en el análisis real).
+            3. Plan de Acción Técnico Detallado (Pasos concretos de desarrollo utilizando estrictamente los lenguajes {lenguajes_reales}).
+            4. Riesgos y Mitigación Operativa (Auditoría QA).
             
-            Entrega ÚNICAMENTE el código Markdown final del documento. No agregues saludos ni explicaciones previas.
+            Entrega ÚNICAMENTE el código Markdown final del documento. No agregues saludos ni explicaciones previas. Prohibido usar Java, Maven, pom.xml o lenguajes que no estén en el proyecto.
             """
             
             reporte_final_md = j.ask(prompt_doc, model=model_text)
@@ -250,8 +286,13 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             
             TAREA DE NEGOCIO: {tarea}
             
+            --- LENGUAJES ACTIVOS REALES DETECTADOS EN EL PROYECTO ---
+            {lenguajes_reales}
+            
             ENTREGABLE: Escribe un plan técnico detallado. Por cada archivo requerido, 
             indica la ruta exacta (usando la RUTA ABSOLUTA DEL PROYECTO como base) y el bloque de código completo que debe contener. 
+            Toda tu propuesta y código DEBEN estar alineados estrictamente con los lenguajes reales detectados ({lenguajes_reales}).
+            NO propongas Java, Maven, XML o pom.xml si el proyecto real está en Python/React.
             NO uses herramientas de sistema. Solo entrega el texto del diseño estructurado.
             """
             
@@ -264,14 +305,16 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # FASE 2: EL DEVELOPER
             console.print("\n[bold green]👨‍💻 Fase 2: El Developer está escribiendo los archivos en disco...[/bold green]")
             prompt_dev = f"""
-            Eres un Developer backend. Tu objetivo es crear archivos dentro de la carpeta: {ruta}
+            Eres un Developer backend. Tu objetivo es crear o modificar archivos dentro de la carpeta: {ruta}
             --- PLAN DEL ARQUITECTO ---
             {plan_arquitecto}
             --- FIN DEL PLAN ---
             
+            LENGUAJES DEL PROYECTO: {lenguajes_reales}
+            
             REGLAS DE SALIDA:
-            1. Invoca `file_write` con la RUTA COMPLETA: {ruta}nombre_del_archivo.
-            2. PASA EL CÓDIGO PURO en el parámetro 'content'.
+            1. Invoca `file_write` con la RUTA COMPLETA de archivos de Python o React de tu proyecto: {ruta}nombre_del_archivo.
+            2. PASA EL CÓDIGO PURO Y COMPLETO en el parámetro 'content'. No uses placeholders como '...' o '// rest of code'. Escribe todo el código fuente funcional.
             3. NO incluyas markdown (```python o ```) en el contenido. Solo entrega el código fuente.
             """
             
@@ -299,7 +342,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             print("🕵️‍♂️ Fase 3: El Analista QA está auditando el trabajo...")
             prompt_qa = f"""
             Eres un Analista QA de Software con 20 años de experiencia.
-            El Developer acaba de crear archivos basándose en este plan:
+            El Developer acab de crear archivos basándose en este plan:
             {plan_arquitecto}
             
             Usa tu herramienta `shell_exec` para hacer un `ls -la {ruta}` 
