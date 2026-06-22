@@ -96,7 +96,7 @@ function StepDetail({ step, index }: { step: TraceStep; index: number }) {
         <span className="flex-1" />
         <span className="text-xs font-mono flex items-center gap-1" style={{ color: 'var(--color-text-tertiary)' }}>
           <Clock size={10} />
-          {step.duration_ms.toFixed(0)}ms
+          {((step.duration_ms !== undefined ? step.duration_ms : (step as any).duration_seconds * 1000) || 0).toFixed(0)}ms
         </span>
       </button>
       {expanded && dataEntries.length > 0 && (

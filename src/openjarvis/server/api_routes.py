@@ -295,6 +295,9 @@ def _serialise_trace(trace) -> dict:
         st = step.get("step_type")
         if hasattr(st, "value"):
             step["step_type"] = st.value
+        # Convert step duration_seconds to duration_ms for the frontend TraceDebugger
+        step_dur_sec = step.get("duration_seconds", 0.0)
+        step["duration_ms"] = round(step_dur_sec * 1000)
     return d
 
 
