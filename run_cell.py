@@ -10,16 +10,21 @@ def limpiar_codigo(contenido: str) -> str:
 # ==========================================
 # EL INPUT DEL PRODUCT OWNER / ORQUESTADOR
 # ==========================================
-# Esperamos 2 parámetros: [1] Ruta del proyecto, [2] Requerimiento
+# Esperamos 2 o 3 parámetros: [1] Ruta del proyecto, [2] Requerimiento, [3] Modelo base opcional
+MODELO_BASE = "llama3.1:8b"
+MODELO_CODIGO = "qwen2.5-coder:14b"
+
 if len(sys.argv) > 2:
     RUTA_PROYECTO = sys.argv[1]
     REQUERIMIENTO = sys.argv[2]
+    if len(sys.argv) > 3:
+        MODELO_BASE = sys.argv[3]
 else:
     # Fallback solo para pruebas si lo ejecutas a mano sin parámetros
     RUTA_PROYECTO = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/backend/"
     REQUERIMIENTO = "Prueba local: Agregar archivo database.py con SQLAlchemy para SQLite."
 
-def run_software_factory(ruta: str, tarea: str):
+def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, model_code: str = MODELO_CODIGO):
     print(f"🚀 INICIANDO SPRINT AUTÓNOMO DE LA CÉLULA...")
     print(f"📂 Proyecto destino: {ruta}\n")
     
@@ -42,7 +47,7 @@ def run_software_factory(ruta: str, tarea: str):
         """
         
         # El Arquitecto piensa y devuelve texto puro
-        plan_arquitecto = j.ask(prompt_arquitecto, model="llama3.1:8b")
+        plan_arquitecto = j.ask(prompt_arquitecto, model=model_text)
         print("✅ Blueprint generado exitosamente.\n")
         # ==========================================
         # FASE 2: EL DEVELOPER (El Músculo)
@@ -63,7 +68,7 @@ def run_software_factory(ruta: str, tarea: str):
         
         resultado_dev = j.ask_full(
             prompt_dev, 
-            model="llama3.1:8b", 
+            model=model_code, 
             agent="native_react", 
             tools=["file_write"]
         )
@@ -99,7 +104,7 @@ def run_software_factory(ruta: str, tarea: str):
         
         resultado_qa = j.ask_full(
             prompt_qa, 
-            model="llama3.1:8b", 
+            model=model_code, 
             agent="native_react", 
             tools=["shell_exec", "file_read"]
         )
@@ -134,7 +139,7 @@ def run_software_factory(ruta: str, tarea: str):
         
         resultado_doc = j.ask_full(
             prompt_doc, 
-            model="llama3.1:8b", 
+            model=model_text, 
             agent="native_react",
             tools=["file_write"]
         )
