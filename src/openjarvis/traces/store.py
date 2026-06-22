@@ -90,8 +90,9 @@ class TraceStore:
         # AgenticRunner dispatches agent work to a ThreadPoolExecutor
         # (for Playwright compat), so trace writes may originate from
         # a different thread than the one that opened the connection.
-        self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
+        self._conn = sqlite3.connect(self._db_path, check_same_thread=False, timeout=5.0)
         self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn.execute("PRAGMA busy_timeout = 5000")
         self._conn.execute(_CREATE_TRACES)
         self._conn.execute(_CREATE_STEPS)
         self._conn.execute(_CREATE_FTS)
