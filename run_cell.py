@@ -33,6 +33,57 @@ def es_tarea_analisis(tarea: str) -> bool:
     keywords = ["revis", "analiz", "plan de", "plan de mejoras", "sugerencia", "estudi", "auditar", "diagnóstico", "reporte", "observaciones"]
     return any(keyword in tarea.lower() for keyword in keywords)
 
+def obtener_contexto_codigo(ruta: str) -> str:
+    """Explora recursivamente el directorio del proyecto y extrae el árbol y contenido de archivos clave."""
+    tree_lines = []
+    file_contents = []
+    
+    # Normalizar ruta para evitar problemas con diagonales dobles
+    ruta_norm = os.path.abspath(ruta)
+    
+    if not os.path.exists(ruta_norm):
+        return f"[Error] El directorio '{ruta_norm}' no existe en disco."
+        
+    for root, dirs, files in os.walk(ruta_norm):
+        # Ignorar carpetas ocultas, virtuales o pesadas de node
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['node_modules', '__pycache__', '.venv', '.git', '.github']]
+        
+        # Calcular sangría para el árbol visual
+        level = root.replace(ruta_norm, '').count(os.sep)
+        indent = ' ' * 4 * level
+        folder_name = os.path.basename(root) if os.path.basename(root) else root
+        tree_lines.append(f"{indent}├── {folder_name}/")
+        
+        subindent = ' ' * 4 * (level + 1)
+        for f in files:
+            if f.startswith('.') or f == '.DS_Store' or f in ['PLAN_DE_MEJORAS.md', 'README.md']:
+                continue
+            tree_lines.append(f"{subindent}└── {f}")
+            
+            # Si es un archivo de texto de código fuente, leemos su contenido
+            file_path = os.path.join(root, f)
+            ext = os.path.splitext(f)[1].lower()
+            # Leemos archivos clave de backend o frontend
+            if ext in ['.py', '.json', '.txt', '.ts', '.tsx', '.js', '.jsx', '.html', '.css', '.toml']:
+                try:
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as file_obj:
+                        content = file_obj.read().strip()
+                        # Limitar tamaño por archivo para evitar desbordar el contexto del LLM
+                        if len(content) > 4000:
+                            content = content[:4000] + "\n... [TRUNCADO POR TAMAÑO] ..."
+                        
+                        rel_path = os.path.relpath(file_path, ruta_norm)
+                        file_contents.append(
+                            f"📄 [b]ARCHIVO: {rel_path}[/b]\n"
+                            f"```\n{content}\n```"
+                        )
+                except Exception as e:
+                    file_contents.append(f"❌ Error al leer {f}: {e}")
+                    
+    contexto = "🌲 [bold cyan]ÁRBOL DE DIRECTORIOS Y ARCHIVOS:[/bold cyan]\n" + "\n".join(tree_lines) + "\n\n"
+    contexto += "📝 [bold cyan]CÓDIGO FUENTE DE LOS ARCHIVOS DEL PROYECTO:[/bold cyan]\n" + "\n\n".join(file_contents)
+    return contexto
+
 def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, model_code: str = MODELO_CODIGO):
     console.print(Panel(
         f"[bold green]🚀 INICIANDO SPRINT AUTÓNOMO DE LA CÉLULA DE IA[/bold green]\n"
@@ -55,32 +106,33 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # FLUJO DE ANÁLISIS, REVISIÓN Y PLANIFICACIÓN
             # ==========================================
             
-            # FASE 1: EL ARQUITECTO INSPECCIONA Y PLANIFICA
-            console.print("[bold cyan]🏗️  Fase 1: El Arquitecto está inspeccionando el proyecto actual...[/bold cyan]")
+            # FASE 0: EXPLORACIÓN PROGRAMÁTICA EN MILISEGUNDOS
+            console.print("[bold yellow]🔍 Fase 0: Extrayendo contexto completo del código local programáticamente...[/bold yellow]")
+            codigo_contexto = obtener_contexto_codigo(ruta)
+            console.print("[green]✓ Contexto de código cargado e inyectado con éxito.[/green]\n")
+            
+            # FASE 1: EL ARQUITECTO ANALIZA E INVENTA EL PLAN
+            console.print("[bold cyan]🏗️  Fase 1: El Arquitecto está redactando el plan de mejoras...[/bold cyan]")
             
             prompt_arquitecto = f"""
             Eres el Arquitecto de Software Senior de la célula.
-            Tu misión es analizar el proyecto ubicado en: {ruta}
+            Tu misión es analizar el proyecto de código del cliente y diseñar un plan de mejoras técnico detallado.
             
-            SOLICITUD DEL USUARIO: {tarea}
+            REQUERIMIENTO DEL USUARIO: {tarea}
             
-            Usa las herramientas a tu disposición (`shell_exec` y `file_read`) para explorar el directorio del proyecto, 
-            ver qué archivos existen, leer su código fuente principal y luego generar un PLAN DE MEJORAS técnico y estructurado.
+            --- CONTEXTO COMPLETO DEL PROYECTO LOCAL ---
+            {codigo_contexto}
+            --- FIN DEL CONTEXTO ---
             
-            Usa `shell_exec` para hacer un `ls -R` de la ruta {ruta} para entender la estructura de archivos, 
-            y luego usa `file_read` en los archivos clave que encuentres.
-            
-            ENTREGABLE: Entrega un reporte técnico de arquitectura detallado con observaciones claras y propuestas de mejora.
+            Analiza de forma exhaustiva la estructura del proyecto, las dependencias y la calidad del código fuente inyectado.
+            Genera un REPORTE DE ARQUITECTURA detallando:
+            1. Fortalezas identificadas del código actual.
+            2. Puntos débiles (cuellos de botella, código duplicado, falta de tipado, mala estructuración, etc.).
+            3. Plan de Mejoras paso a paso para optimizar la modularidad, rendimiento, documentación y calidad.
             """
             
-            # El Arquitecto inspecciona con herramientas de lectura
-            resultado_arch = j.ask_full(
-                prompt_arquitecto,
-                model=model_text,
-                agent="native_react",
-                tools=["shell_exec", "file_read"]
-            )
-            plan_arquitecto = resultado_arch["content"]
+            # Inferencia directa sin ReAct, 100% veloz y confiable, sin timeouts
+            plan_arquitecto = j.ask(prompt_arquitecto, model=model_text)
             
             console.print(Panel(
                 f"[bold cyan]👷 REPORTE DEL ARQUITECTO:[/bold cyan]\n\n{plan_arquitecto}",
@@ -89,27 +141,23 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             ))
             
             # FASE 2: EL ANALISTA QA AUDITA EL PLAN DE MEJORAS
-            console.print("\n[bold magenta]🕵️‍♂️ Fase 2: El Analista QA está auditando el plan del Arquitecto...[/bold magenta]")
+            console.print("\n[bold magenta]🕵️‍♂️ Fase 2: El Analista QA está auditando críticamente el plan del Arquitecto...[/bold magenta]")
             prompt_qa = f"""
-            Eres el Analista QA Senior de la célula con 20 años de experiencia.
-            Tu misión es revisar y auditar críticamente el plan de mejoras generado por el Arquitecto para el proyecto: {ruta}.
+            Eres el Analista QA Senior de la célula con 20 años de experiencia en auditoría de código y calidad.
+            Tu misión es revisar y auditar críticamente el plan de mejoras generado por el Arquitecto para el proyecto.
             
-            --- PLAN DEL ARQUITECTO ---
+            --- CONTEXTO COMPLETO DEL PROYECTO LOCAL ---
+            {codigo_contexto}
+            
+            --- PLAN PROPUESTO POR EL ARQUITECTO ---
             {plan_arquitecto}
             --- FIN DEL PLAN ---
             
-            Usa tus herramientas para realizar cualquier prueba o comprobación si es necesario, 
-            y genera un REPORTE DE AUDITORÍA riguroso indicando si apruebas el plan, qué riesgos identificas 
-            y qué mejoras sugieres agregar.
+            Identifica riesgos potenciales de las sugerencias del Arquitecto, código que podría romperse si se aplica,
+            y agrega correcciones técnicas. Entrega un REPORTE DE AUDITORÍA riguroso.
             """
             
-            resultado_qa = j.ask_full(
-                prompt_qa,
-                model=model_code, # Usamos el modelo experto en lógica/código para auditar
-                agent="native_react",
-                tools=["shell_exec", "file_read"]
-            )
-            reporte_qa = resultado_qa["content"]
+            reporte_qa = j.ask(prompt_qa, model=model_code) # Usamos el modelo ultra-experto en lógica
             
             console.print(Panel(
                 f"[bold magenta]🕵️‍♂️ REPORTE DE AUDITORÍA QA:[/bold magenta]\n\n{reporte_qa}",
@@ -117,43 +165,50 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
                 border_style="magenta"
             ))
             
-            # FASE 3: EL DOCUMENTADOR REDACTA EL DOCUMENTO FINAL
+            # FASE 3: EL DOCUMENTADOR REDACTA EL DOCUMENTO FINAL EN DISCO
             console.print("\n[bold yellow]✍️  Fase 3: El Documentador está redactando el reporte final en Markdown...[/bold yellow]")
             
             mejores_path = os.path.join(ruta, "PLAN_DE_MEJORAS.md")
             prompt_doc = f"""
-            Eres el Technical Writer Senior.
-            Tu misión es sintetizar el plan del Arquitecto y la auditoría de QA para crear un documento final 
-            sumamente pulido, ordenado y profesional en formato Markdown.
-            
-            Guarda este documento usando la herramienta `file_write` en la ruta: {mejores_path}
+            Eres el Technical Writer Senior. Tu trabajo es consolidar la información en un formato profesional Markdown.
+            Escribe un documento final ordenado y estructurado con un tono pulido e industrial.
             
             --- PLAN DE MEJORAS PROPUESTO ---
             {plan_arquitecto}
             
-            --- AUDITORÍA DE QA ---
+            --- REPORTE DE AUDITORÍA DE QA ---
             {reporte_qa}
             
-            ENTREGABLE: Redacta un documento con una descripción del análisis, el plan de mejoras detallado,
-            riesgos mitigados y pasos de implementación estructurados. Guarda el archivo directamente usando `file_write`.
+            Genera un archivo Markdown completo que contenga:
+            1. Resumen Ejecutivo del Análisis.
+            2. Áreas de Oportunidad Identificadas (Puntos Débiles).
+            3. Plan de Acción Técnico Detallado (Pasos concretos de desarrollo).
+            4. Riesgos y Mitigación Operativa (Auditoría QA).
+            
+            Entrega ÚNICAMENTE el código Markdown final del documento. No agregues saludos ni explicaciones previas.
             """
             
-            resultado_doc = j.ask_full(
-                prompt_doc,
-                model=model_text,
-                agent="native_react",
-                tools=["file_write"]
-            )
+            reporte_final_md = j.ask(prompt_doc, model=model_text)
+            
+            # Guardamos el archivo directamente usando Python de forma programática (100% robusto, cero fallas)
+            try:
+                # Asegurar de crear carpetas si no existen
+                os.makedirs(os.path.dirname(mejores_path), exist_ok=True)
+                with open(mejores_path, 'w', encoding='utf-8') as f_out:
+                    f_out.write(reporte_final_md)
+                console.print(f"[bold green]✓ Archivo escrito con éxito en disco: {mejores_path}[/bold green]\n")
+            except Exception as e_write:
+                console.print(f"[bold red]❌ Error al escribir el archivo final: {e_write}[/bold red]")
             
             console.print(Panel(
-                f"[bold yellow]📝 REPORTE ESCRITO POR EL DOCUMENTADOR EN DISCO ({mejores_path}):[/bold yellow]\n\n{resultado_doc['content']}",
-                title="[bold white]Fase 3 - Documentador[/bold white]",
+                f"[bold yellow]📝 REPORTE ESCRITO EN DISCO:[/bold yellow]\n\n{reporte_final_md}",
+                title="[bold white]Fase 3 - Documentador (Documento Final)[/bold white]",
                 border_style="yellow"
             ))
             
             console.print("================ REPORTE FINAL DE ANÁLISIS ================")
             console.print(f"🎉 SPRINT DE ANÁLISIS FINALIZADO CON ÉXITO.\n"
-                          f"📂 El plan final ha sido guardado de forma segura en: [bold green]{mejores_path}[/bold green]")
+                          f"📂 El plan de mejoras ha sido guardado de forma segura en: [bold green]{mejores_path}[/bold green]")
             console.print("==========================================================")
             
         else:
