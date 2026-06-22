@@ -1,6 +1,7 @@
 import os
 import sys
 import re
+import time
 from openjarvis import Jarvis
 from rich.console import Console
 from rich.panel import Panel
@@ -65,7 +66,7 @@ def detectar_lenguajes_proyecto(ruta: str) -> str:
     return " y ".join(langs)
 
 def obtener_contexto_codigo(ruta: str) -> str:
-    """Explora recursivamente el directorio del proyecto y extrae el árbol y contenido de archivos clave."""
+    """Explora recursivamente el proyecto y extrae un contexto ultra-enfocado de alta densidad, apto para Ollama."""
     tree_lines = []
     file_contents = []
     
@@ -110,7 +111,7 @@ def obtener_contexto_codigo(ruta: str) -> str:
                         else:
                             content = "".join(lines[:35]).strip()
                             if len(lines) > 35:
-                                content += "\n... [TRUNCADO POR TAMAÑO] ..."
+                                content += "\n... [TRUNCADO PARA PRESERVAR MEMORIA DEL CONTEXTO] ..."
                         
                         rel_path = os.path.relpath(file_path, ruta_norm)
                         file_contents.append(
@@ -177,7 +178,7 @@ def extraer_archivos_de_markdown(texto: str) -> list[tuple[str, str]]:
         lines_before = text_before.strip().split('\n')[-6:]
         
         file_path = ""
-        # Patrón para capturar una ruta plausible de código fuente real (evita casar versiones numéricas como 1.9.0 o 0.1.0)
+        # Buscamos una ruta plausible de archivo
         path_pattern = r"([\w\-./]+\.(?:py|tsx|ts|jsx|js|html|css|json|toml))"
         for line in reversed(lines_before):
             m = re.search(path_pattern, line)
@@ -197,6 +198,52 @@ def extraer_archivos_de_markdown(texto: str) -> list[tuple[str, str]]:
             resultados.append((file_path, code_content))
             
     return resultados
+
+def registrar_traza(query: str, respuesta: str, modelo: str, duracion_segundos: float):
+    """Guarda programáticamente una traza de telemetría local en el TraceStore centralizado de OpenJarvis."""
+    try:
+        from openjarvis.traces.store import TraceStore
+        from openjarvis.core.types import StepType, Trace, TraceStep
+        
+        db_path = os.path.expanduser("~/.openjarvis/traces.db")
+        store = TraceStore(db_path)
+        
+        ahora = time.time()
+        
+        # 1. Crear paso de generación de pensamiento (Inferencia)
+        step_gen = TraceStep(
+            step_type=StepType.GENERATE,
+            timestamp=ahora - duracion_segundos,
+            duration_seconds=duracion_segundos,
+            input={"prompt": query},
+            output={"content": respuesta}
+        )
+        
+        # 2. Crear paso de respuesta final
+        step_resp = TraceStep(
+            step_type=StepType.RESPOND,
+            timestamp=ahora,
+            duration_seconds=0.0,
+            output={"content": respuesta}
+        )
+        
+        # 3. Construir e instanciar la Traza completa
+        trace = Trace(
+            query=query,
+            agent="run_cell",
+            model=modelo,
+            engine="ollama",
+            steps=[step_gen, step_resp],
+            result=respuesta,
+            started_at=ahora - duracion_segundos,
+            ended_at=ahora
+        )
+        trace.total_latency_seconds = duracion_segundos
+        
+        # Guardar en SQLite centralizado
+        store.save(trace)
+    except Exception:
+        pass
 
 def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, model_code: str = MODELO_CODIGO, force_flow: str = None):
     console.print(Panel(
@@ -263,7 +310,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             """
             
             # Inferencia directa sin ReAct, 100% veloz y confiable, sin timeouts
+            t_start = time.time()
             plan_arquitecto = j.ask(prompt_arquitecto, model=model_text)
+            registrar_traza(f"Célula IA (Arquitecto) - Plan de {os.path.basename(ruta.rstrip('/\\'))}", plan_arquitecto, model_text, time.time() - t_start)
             
             console.print(Panel(
                 f"[bold cyan]👷 REPORTE DEL ARQUITECTO:[/bold cyan]\n\n{plan_arquitecto}",
@@ -293,7 +342,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             - Genera un REPORTE DE AUDITORÍA riguroso indicando si apruebas el plan y qué riesgos identificas.
             """
             
+            t_start = time.time()
             reporte_qa = j.ask(prompt_qa, model=model_code) # Usamos el modelo ultra-experto en lógica
+            registrar_traza("Célula IA (Analista QA) - Auditoría del Plan", reporte_qa, model_code, time.time() - t_start)
             
             console.print(Panel(
                 f"[bold magenta]🕵️‍♂️ REPORTE DE AUDITORÍA QA:[/bold magenta]\n\n{reporte_qa}",
@@ -302,7 +353,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             ))
             
             # FASE 3: EL DOCUMENTADOR REDACTA EL DOCUMENTO FINAL EN DISCO
-            console.print("\n[bold yellow]✍️  Fase 3: El Documentador está redactando el reporte final en Markdown...[/bold yellow]")
+            console.print("\n[bold yellow]✍️  Fase 3: El Documentador está redactando el manual técnico en disco...[/bold yellow]")
             
             mejores_path = os.path.join(ruta, "PLAN_DE_MEJORAS.md")
             prompt_doc = f"""
@@ -324,7 +375,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Entrega ÚNICAMENTE el código Markdown final del documento. No agregues saludos ni explicaciones previas. Prohibido usar Java, Maven, pom.xml o lenguajes que no estén en el proyecto.
             """
             
+            t_start = time.time()
             reporte_final_md = j.ask(prompt_doc, model=model_text)
+            registrar_traza("Célula IA (Documentador) - Reporte Final Markdown", reporte_final_md, model_text, time.time() - t_start)
             
             # Guardamos el archivo directamente usando Python de forma programática (100% robusto, cero fallas)
             try:
@@ -370,7 +423,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             NO uses herramientas de sistema. Solo entrega el texto del diseño estructurado.
             """
             
+            t_start = time.time()
             plan_arquitecto = j.ask(prompt_arquitecto, model=model_text)
+            registrar_traza(f"Célula IA (Architect) - Diseñar Blueprint para {os.path.basename(ruta.rstrip('/\\'))}", plan_arquitecto, model_text, time.time() - t_start)
             console.print("✅ Blueprint generado exitosamente.\n")
             
             # Mostrar Blueprint de Arquitectura
@@ -424,7 +479,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
                     prompt_actual = prompt_dev
                 
                 # Inferencia directa rápida, 100% veloz y confiable
+                t_start = time.time()
                 resultado_dev = j.ask(prompt_actual, model=model_code)
+                registrar_traza("Célula IA (Developer) - Generación de Código Fuente", resultado_dev, model_code, time.time() - t_start)
                 
                 # PARSEO PROGRAMÁTICO CON ULTRA-REDUNDANCIAS
                 matches = extraer_archivos_de_markdown(resultado_dev)
@@ -470,7 +527,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Genera un REPORTE DE AUDITORÍA indicando si apruebas o rechazas la construcción de los archivos programados.
             """
             
+            t_start = time.time()
             reporte_qa = j.ask(prompt_qa, model=model_code)
+            registrar_traza("Célula IA (Analista QA) - Auditoría de Compilación", reporte_qa, model_code, time.time() - t_start)
             console.print("[bold magenta]✅ Reporte de QA finalizado.[/bold magenta]\n")
 
             # FASE 4: EL DOCUMENTADOR
@@ -488,7 +547,9 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Escribe un manual de documentación en Markdown para este proyecto.
             """
             
+            t_start = time.time()
             readme_content = j.ask(prompt_doc, model=model_text)
+            registrar_traza("Célula IA (Documentador) - Reporte Final README.md", readme_content, model_text, time.time() - t_start)
             
             try:
                 with open(readme_path, 'w', encoding='utf-8') as f_readme:
