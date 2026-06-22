@@ -116,7 +116,8 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             
             prompt_arquitecto = f"""
             Eres el Arquitecto de Software Senior de la célula.
-            Tu misión es analizar el proyecto de código del cliente y diseñar un plan de mejoras técnico detallado.
+            Tu misión es realizar un análisis del código fuente y de la estructura de archivos inyectada a continuación, 
+            para diseñar un PLAN TÉCNICO DE MEJORAS Y ARQUITECTURA 100% orientado a código (Python y React).
             
             REQUERIMIENTO DEL USUARIO: {tarea}
             
@@ -124,11 +125,14 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             {codigo_contexto}
             --- FIN DEL CONTEXTO ---
             
-            Analiza de forma exhaustiva la estructura del proyecto, las dependencias y la calidad del código fuente inyectado.
-            Genera un REPORTE DE ARQUITECTURA detallando:
-            1. Fortalezas identificadas del código actual.
-            2. Puntos débiles específicos (cuellos de botella, código duplicado, falta de tipado, mala estructuración, etc. basándote en el código inyectado).
-            3. Plan de Mejoras paso a paso para optimizar la modularidad, rendimiento, documentación y calidad de forma específica usando Python (para backend) y React (para frontend).
+            Instrucciones de contenido estricto:
+            - Prohibido redactar textos administrativos, corporativos, de capacitación de equipos o de marketing.
+            - Sé sumamente técnico, concreto y específico. Menciona nombres de archivos reales del proyecto, funciones, variables, imports y rutas.
+            - Estructura tu reporte de arquitectura detallando:
+              1. DIAGNÓSTICO DE ESTRUCTURA Y ARCHIVOS: Analiza la jerarquía de archivos inyectada. Propón una reestructuración limpia si es necesario.
+              2. REVISIÓN CRÍTICA DE BACKEND (PYTHON): Evalúa la calidad, imports, modularidad, controladores, base de datos y tipado en los archivos python inyectados.
+              3. REVISIÓN CRÍTICA DE FRONTEND (REACT): Evalúa el uso de componentes, hooks de datos, llamadas de API, package.json y maquetación de React inyectada.
+              4. MEJORAS DE CÓDIGO ESPECÍFICAS: Describe los cambios exactos de lógica de programación por cada archivo (ej: agregar Pydantic schemas para validación, configurar rutas API Router modulares, refactorizar estados en componentes React).
             """
             
             # Inferencia directa sin ReAct, 100% veloz y confiable, sin timeouts
@@ -143,8 +147,8 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # FASE 2: EL ANALISTA QA AUDITA EL PLAN DE MEJORAS
             console.print("\n[bold magenta]🕵️‍♂️ Fase 2: El Analista QA está auditando críticamente el plan del Arquitecto...[/bold magenta]")
             prompt_qa = f"""
-            Eres el Analista QA Senior de la célula con 20 años de experiencia en auditoría de código y calidad.
-            Tu misión es revisar y auditar críticamente el plan de mejoras generado por el Arquitecto para el proyecto.
+            Eres el Analista QA Senior de la célula con 20 años de experiencia en auditoría de código y calidad técnica.
+            Tu misión es auditar críticamente el plan de mejoras propuesto por el Arquitecto sobre el código real inyectado.
             
             --- CONTEXTO COMPLETO DEL PROYECTO LOCAL ---
             {codigo_contexto}
@@ -153,8 +157,12 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             {plan_arquitecto}
             --- FIN DEL PLAN ---
             
-            Identifica riesgos potenciales de las sugerencias del Arquitecto, código que podría romperse si se aplica,
-            y agrega correcciones técnicas. Entrega un REPORTE DE AUDITORÍA riguroso.
+            Instrucciones de auditoría técnica:
+            - Concéntrate exclusivamente en la viabilidad del código, excepciones, imports rotos, fallos de compilación, linters y tipos de datos de Python/React.
+            - Genera un REPORTE TÉCNICO DE AUDITORÍA QA detallando:
+              1. BUGS POTENCIALES Y RIESGOS LÓGICOS en las propuestas del Arquitecto.
+              2. ROBUSTEZ DE CÓDIGO REQUERIDA: Propón manejos de excepciones específicos (Try/Except en Python, Try-Catch en JS/React), validaciones de tipo (TypeScript, Pydantic) y asincronía.
+              3. ESPECIFICACIÓN DE PRUEBAS AUTOMATIZADAS: Sugiere pruebas específicas unitarias o de integración para asegurar que las mejoras no rompan el proyecto.
             """
             
             reporte_qa = j.ask(prompt_qa, model=model_code) # Usamos el modelo ultra-experto en lógica
@@ -170,20 +178,23 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             
             mejores_path = os.path.join(ruta, "PLAN_DE_MEJORAS.md")
             prompt_doc = f"""
-            Eres el Technical Writer Senior. Tu trabajo es consolidar la información en un formato profesional Markdown.
-            Escribe un documento final ordenado y estructurado con un tono pulido e industrial.
+            Eres el Technical Writer Senior. Tu trabajo es consolidar las propuestas del Arquitecto y la auditoría de QA en un documento final Markdown (PLAN_DE_MEJORAS.md)
+            que sirva como un PLAN TÉCNICO DE INGENIERÍA PURO, 100% accionable para que un desarrollador de software se ponga a codificar de inmediato.
             
-            --- PLAN DE MEJORAS PROPUESTO ---
+            --- PLAN DE MEJORAS PROPUESTO (ARQUITECTO) ---
             {plan_arquitecto}
             
             --- REPORTE DE AUDITORÍA DE QA ---
             {reporte_qa}
             
-            Genera un archivo Markdown completo que contenga:
-            1. Resumen Ejecutivo del Análisis.
-            2. Áreas de Oportunidad Identificadas (Puntos Débiles basados en el análisis real).
-            3. Plan de Acción Técnico Detallado (Pasos concretos de desarrollo usando Python y React).
-            4. Riesgos y Mitigación Operativa (Auditoría QA).
+            Instrucciones de redacción técnica:
+            - PROHIBIDO utilizar jerga de marketing, administración, recursos humanos o capacitación de equipos (no hables de mentores, cursos, reuniones o metodologías ágiles). El tono debe ser puramente de ingeniería de software.
+            - Estructura el archivo PLAN_DE_MEJORAS.md exactamente con estas secciones:
+              1. DIAGNÓSTICO TÉCNICO DE CALIDAD DE CÓDIGO (Hallazgos puntuales en los archivos reales del backend y frontend).
+              2. ARQUITECTURA DE ARCHIVOS PROPUESTA (Árbol visual de carpetas modificado).
+              3. PLAN DE REFACCIÓN BACKEND PYTHON / FASTAPI (Lógica exacta de código, imports, rutas, controladores y bases de datos).
+              4. PLAN DE REFACCIÓN FRONTEND REACT / TYPESCRIPT (Estructura de componentes, hooks de datos, llamadas a API y package.json).
+              5. ESPECIFICACIÓN DE SEGURIDAD Y CONTROL QA (Pruebas unitarias, excepciones try/except, linters y tipados estáticos).
             
             Entrega ÚNICAMENTE el código Markdown final del documento. No agregues saludos ni explicaciones previas.
             """
