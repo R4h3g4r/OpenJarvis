@@ -124,6 +124,56 @@ def obtener_contexto_codigo(ruta: str) -> str:
     contexto += "📝 [bold cyan]CÓDIGO FUENTE REAL (Vista previa de alta densidad de imports y funciones):[/bold cyan]\n" + "\n\n".join(file_contents)
     return contexto
 
+def extraer_archivos_de_markdown(texto: str) -> list[tuple[str, str]]:
+    """Analiza de forma ultra-flexible el texto de salida del LLM para extraer (ruta_archivo, codigo)."""
+    resultados = []
+    
+    # 1. Intentar el delimitador estricto primero
+    matches_strict = re.findall(r"=== INICIO_ARCHIVO:\s*(.*?)\s*===\n(.*?)(?=\n=== FIN_ARCHIVO)", texto, re.DOTALL)
+    if matches_strict:
+        for p, c in matches_strict:
+            resultados.append((p.strip(), c.strip()))
+        return resultados
+        
+    # 2. Si no hay delimitadores estrictos, hacemos un análisis ultra-flexible de bloques de Markdown.
+    # Dividimos por bloques de código de markdown.
+    blocks = re.split(r"```(python|typescript|tsx|ts|js|jsx|html|css|toml|xml|bash|sh|json)?", texto)
+    
+    for i in range(1, len(blocks) - 1, 3):
+        lang = blocks[i]
+        code_content = blocks[i+1]
+        text_before = blocks[i-1]
+        
+        if not code_content or not code_content.strip():
+            continue
+            
+        # Buscamos una ruta de archivo en las últimas 6 líneas del texto_antes de este bloque de código
+        lines_before = text_before.strip().split('\n')[-6:]
+        file_path = ""
+        
+        # Patrón para capturar una ruta plausible (e.g., backend/api/main.py, models.py, src/App.tsx)
+        path_pattern = r"([\w\-./]+\.[\w]+)"
+        
+        for line in reversed(lines_before):
+            match = re.search(path_pattern, line)
+            if match:
+                candidate = match.group(1).strip()
+                # Limpiamos markdown
+                candidate = candidate.replace("`", "").replace("*", "").replace("#", "").replace("[", "").replace("]", "").strip()
+                # Quitamos diagonales extrañas al inicio
+                candidate = candidate.lstrip('/')
+                
+                # Excluimos binarios, imágenes y bases de datos
+                if '/' in candidate or '.' in candidate:
+                    if not candidate.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.db', '.sqlite', '.exe', '.zip', '.pdf')):
+                        file_path = candidate
+                        break
+                        
+        if file_path:
+            resultados.append((file_path, code_content.strip()))
+            
+    return resultados
+
 def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, model_code: str = MODELO_CODIGO, force_flow: str = None):
     console.print(Panel(
         f"[bold green]🚀 INICIANDO SPRINT AUTÓNOMO DE LA CÉLULA DE IA[/bold green]\n"
@@ -317,24 +367,27 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Instrucciones críticas:
             - Programa ÚNICAMENTE en los lenguajes detectados del proyecto ({lenguajes_reales}). Prohibido usar Java, Maven o XML.
             - Escribe el código fuente COMPLETO y funcional de cada archivo de principio a fin de forma impecable. Prohibido usar placeholders, comentarios de omisión tipo '...' o dejar cosas vacías.
-            - Entrega el código de cada archivo encerrado EXACTAMENTE entre estos delimitadores (uno tras otro):
+            - Por cada archivo que vayas a programar, escribe el nombre del archivo claramente en una línea y luego encierra su código en un bloque estándar de markdown. Sigue este formato exacto para cada archivo:
             
-            === INICIO_ARCHIVO: [ruta_relativa_del_archivo_desde_el_proyecto] ===
-            [código fuente completo aquí]
-            === FIN_ARCHIVO ===
+            Ruta: [ruta_relativa_del_archivo_desde_el_proyecto]
+            ```python (o typescript/tsx dependiente del archivo)
+            [código completo y funcional del archivo aquí]
+            ```
             """
             
             resultado_dev = j.ask(prompt_dev, model=model_code)
             
-            # PARSEO PROGRAMÁTICO INDUSTRIAL CON REDUNDANCIAS:
+            # PARSEO PROGRAMÁTICO INDUSTRIAL CON ULTRA-REDUNDANCIAS FLUIDAS:
             archivos_escritos = []
             
-            # 1. Parseo estándar por delimitadores estrictos
-            matches = re.findall(r"=== INICIO_ARCHIVO:\s*(.*?)\s*===\n(.*?)(?=\n=== FIN_ARCHIVO)", resultado_dev, re.DOTALL)
+            # Analizamos de forma ultra-flexible los bloques de Markdown generados por Qwen
+            matches = extraer_archivos_de_markdown(resultado_dev)
+            
             for rel_path, content in matches:
                 clean_path = rel_path.strip().replace("`", "").strip()
-                clean_content = content.replace("```python", "").replace("```typescript", "").replace("```tsx", "").replace("```", "").strip()
+                clean_content = content.strip()
                 
+                # Validación de seguridad del path
                 full_path = os.path.abspath(os.path.join(ruta, clean_path))
                 if full_path.startswith(os.path.abspath(ruta)):
                     try:
@@ -345,22 +398,6 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
                         archivos_escritos.append(clean_path)
                     except Exception as e_write:
                         console.print(f"[bold red]❌ Error al escribir {clean_path}: {e_write}[/bold red]")
-            
-            # 2. Rescate manual si el modelo usó bloques normales de Markdown
-            if not archivos_escritos:
-                blocks = re.findall(r"```(python|typescript|tsx|ts|js|jsx)\s+Ruta:\s*(.*?)\n(.*?)\n```", resultado_dev, re.DOTALL | re.IGNORECASE)
-                for lang, rel_path, content in blocks:
-                    clean_path = rel_path.strip().replace("`", "").strip()
-                    full_path = os.path.abspath(os.path.join(ruta, clean_path))
-                    if full_path.startswith(os.path.abspath(ruta)):
-                        try:
-                            os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                            with open(full_path, 'w', encoding='utf-8') as f_out:
-                                f_out.write(content.strip())
-                            console.print(f"[bold green]✓ Archivo rescatado y escrito en disco: {clean_path}[/bold green]")
-                            archivos_escritos.append(clean_path)
-                        except Exception:
-                            pass
             
             if archivos_escritos:
                 console.print(f"[bold green]✅ Developer finalizó con éxito. {len(archivos_escritos)} archivos creados físicamente en disco.[/bold green]\n")
