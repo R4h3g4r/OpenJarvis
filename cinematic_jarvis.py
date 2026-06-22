@@ -168,6 +168,33 @@ def main():
                 speak("Apagando sistemas de voz. Hasta luego, señor.")
                 break
                 
+            # COMANDO ESPECIAL: Lanzar la Célula de IA
+            if user_text.lower().startswith("/cell ") or "ejecuta la célula" in user_text.lower() or "ejecuta la celula" in user_text.lower():
+                # Extraemos la orden
+                if user_text.lower().startswith("/cell "):
+                    tarea_celula = user_text[6:].strip()
+                else:
+                    tarea_celula = user_text.lower().replace("ejecuta la célula", "").replace("ejecuta la celula", "").strip()
+                
+                if not tarea_celula:
+                    tarea_celula = "Optimizar la organización de archivos de erika_manicura y agregar comentarios descriptivos en el código."
+                
+                speak("Muy bien, señor. Inicializando el protocolo de desarrollo autónomo de la Célula de IA. Estoy desplegando al Arquitecto, al Developer, al Analista de Calidad y al Documentador en sus núcleos de procesamiento local. Esto tomará un momento.")
+                
+                try:
+                    # Importamos dinámicamente y ejecutamos
+                    from run_cell import run_software_factory
+                    ruta_por_defecto = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/"
+                    
+                    # Ejecutamos la fábrica de software
+                    run_software_factory(ruta_por_defecto, tarea_celula)
+                    
+                    # Al terminar, avisamos al señor
+                    speak("Sprint de desarrollo finalizado con éxito, señor. El código ha sido programado de forma autónoma con Qwen 2.5 Coder, auditado rigurosamente por el Analista de Calidad y documentado en el README de su espacio de trabajo. Puede revisar la carpeta 'erika_manicura' ahora mismo.")
+                except Exception as ex_cell:
+                    speak(f"Señor, tuvimos una interrupción al desplegar los agentes: {ex_cell}")
+                continue
+                
             # Agregar orden actual del usuario al historial
             messages_history.append(Message(role=Role.USER, content=user_text))
             
