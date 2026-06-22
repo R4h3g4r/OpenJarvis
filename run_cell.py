@@ -313,9 +313,10 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             LENGUAJES DEL PROYECTO: {lenguajes_reales}
             
             REGLAS DE SALIDA:
-            1. Invoca `file_write` con la RUTA COMPLETA de archivos de Python o React de tu proyecto: {ruta}nombre_del_archivo.
-            2. PASA EL CÓDIGO PURO Y COMPLETO en el parámetro 'content'. No uses placeholders como '...' o '// rest of code'. Escribe todo el código fuente funcional.
-            3. NO incluyas markdown (```python o ```) en el contenido. Solo entrega el código fuente.
+            1. Invoca la herramienta `file_write` con el parámetro 'path' indicando la RUTA COMPLETA absoluta del archivo del proyecto que vas a escribir. No uses el parámetro 'filename', usa estrictamente 'path'.
+            2. Pasa el contenido de código FUENTE PURO, COMPLETO y 100% funcional en el parámetro 'content'. No uses comentarios o placeholders como '// el código restante va aquí'. Escribe TODO el código del archivo de principio a fin de manera profesional.
+            3. NO incluyas markdown (```python o ```) en el parámetro 'content'. Solo entrega el código fuente crudo.
+            4. Si vas a escribir un archivo dentro de una carpeta nueva (como backend/api/controllers/ o similar), asegúrate de pasar siempre el parámetro 'create_dirs': true en tu llamada de herramienta para que el sistema cree las carpetas de destino automáticamente.
             """
             
             resultado_dev = j.ask_full(
@@ -325,16 +326,18 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
                 tools=["file_write"]
             )
             
-            # FILTRO DE SEGURIDAD INDUSTRIAL
+            # FILTRO DE SEGURIDAD INDUSTRIAL: Interceptamos y forzamos create_dirs=True para evitar errores de directorios inexistentes
             if 'tool_calls' in resultado_dev:
                 for call in resultado_dev['tool_calls']:
                     if call['name'] == 'file_write':
                         args = call.get('args', {})
+                        # Forzamos que cree las carpetas de forma segura en disco
+                        call['args']['create_dirs'] = True
                         if 'content' in args:
                             raw_content = args['content']
                             clean_content = raw_content.replace("```python", "").replace("```", "").strip()
                             call['args']['content'] = clean_content
-                            console.print("[bold green]✨ Limpieza de backticks aplicada con éxito al archivo escrito por el Developer.[/bold green]")
+                            console.print("[bold green]✨ Limpieza de backticks y forzado de creación de directorios aplicados con éxito al archivo escrito por el Developer.[/bold green]")
             
             console.print(f"✅ Developer terminó. Archivos escritos en disco.\n")
             
@@ -342,7 +345,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             print("🕵️‍♂️ Fase 3: El Analista QA está auditando el trabajo...")
             prompt_qa = f"""
             Eres un Analista QA de Software con 20 años de experiencia.
-            El Developer acab de crear archivos basándose en este plan:
+            El Developer acaba de crear archivos basándose en este plan:
             {plan_arquitecto}
             
             Usa tu herramienta `shell_exec` para hacer un `ls -la {ruta}` 
