@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import os
+import re
 import time
 import pyaudio
 from openjarvis import Jarvis
@@ -171,8 +172,20 @@ def main():
             # COMANDO ESPECIAL: Aplicar o Ejecutar el Plan de Mejoras guardado en PLAN_DE_MEJORAS.md
             is_exec_plan = any(phrase in user_text.lower() for phrase in ["ejecuta el plan", "aplica el plan", "ejecutar el plan", "aplica las mejoras", "ejecuta las mejoras"])
             if is_workspace_action := is_exec_plan or user_text.lower().startswith("/cell ") or "ejecuta la célula" in user_text.lower() or "ejecuta la celula" in user_text.lower():
-                # Ruta del proyecto
-                ruta_proyecto = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/"
+                # Ruta del proyecto dinámica: detecta si el usuario especificó una ruta en su mensaje
+                match_path = re.search(r"(/Users/[\w\-./]+/workspace/[\w\-./]+)", user_text)
+                if not match_path:
+                    match_path = re.search(r"(workspace/[\w\-./]+)", user_text)
+                
+                if match_path:
+                    extracted_path = match_path.group(1).rstrip('/') + '/'
+                    if not extracted_path.startswith('/'):
+                        ruta_proyecto = os.path.abspath(os.path.join("/Users/will/Documents/OpenJarvis/OpenJarvis/", extracted_path)) + '/'
+                    else:
+                        ruta_proyecto = extracted_path
+                else:
+                    ruta_proyecto = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/"
+                
                 mejores_path = os.path.join(ruta_proyecto, "PLAN_DE_MEJORAS.md")
                 
                 tarea_celula = ""
