@@ -376,7 +376,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # Mostrar Blueprint de Arquitectura
             console.print(Panel(f"[bold cyan]PLAN TÉCNICO DEL ARQUITECTO:[/bold cyan]\n\n{plan_arquitecto}", title="[bold white]Blueprint de Arquitectura[/bold white]", border_style="cyan"))
             
-            # FASE 2: EL DEVELOPER (MODO INFERENCIA DIRECTA Y ROBUSTA, SIN COMPLEJOS REACT LOOPS)
+            # FASE 2: EL DEVELOPER (MODO INFERENCIA DIRECTA Y ROBUSTA, CON BUCLE DE AUTO-CURACIÓN)
             console.print("\n[bold green]👨‍💻 Fase 2: El Developer está programando los archivos de código...[/bold green]")
             prompt_dev = f"""
             Eres el Developer Senior de la célula de desarrollo.
@@ -394,41 +394,64 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             - Por cada archivo que vayas a programar, escribe el nombre del archivo claramente en una línea y luego encierra su código en un bloque estándar de markdown. Sigue este formato exacto para cada archivo:
             
             Ruta: [ruta_relativa_del_archivo_desde_el_proyecto]
-            ```python (o typescript/tsx dependiente del archivo)
+            ```python (o de acuerdo al lenguaje del archivo: typescript, tsx, css, html, etc.)
             [código completo y funcional del archivo aquí]
             ```
             """
             
-            resultado_dev = j.ask(prompt_dev, model=model_code)
-            
-            # PARSEO PROGRAMÁTICO INDUSTRIAL CON ULTRA-REDUNDANCIAS FLUIDAS:
+            reintentos_max = 3
+            intento = 1
             archivos_escritos = []
             
-            # Analizamos de forma ultra-flexible los bloques de Markdown generados por Qwen (evitando NoneType errors)
-            matches = extraer_archivos_de_markdown(resultado_dev)
-            
-            for rel_path, content in matches:
-                # Normalizamos de forma ultra-inteligente la ruta para evitar el anidamiento de /Users/will/...
-                clean_path = normalizar_ruta_archivo(ruta, rel_path)
-                clean_content = content.strip()
+            while intento <= reintentos_max:
+                if intento > 1:
+                    console.print(Panel(
+                        f"[bold yellow]⚠️ INTENTO {intento-1} FALLIDO: No se detectaron archivos válidos en disco.[/bold yellow]\n"
+                        f"[bold cyan]🔄 Activando protocolo de Auto-Curación (Self-Healing) de la célula...[/bold cyan]\n"
+                        f"[white]Jarvis está auto-analizando su error de formato anterior para corregirse a sí mismo en el Intento {intento}...[/white]",
+                        title="[bold red]Self-Healing Protocol[/bold red]",
+                        border_style="yellow"
+                    ))
+                    # Retroalimentamos al modelo inyectando el error anterior y reforzando las marcas de bloque
+                    prompt_actual = prompt_dev + (
+                        f"\n\n[ALERTA DE AUTO-CURACIÓN - REINTENTO {intento}]: En tu intento anterior NO estructuraste "
+                        f"correctamente las rutas y bloques de código de markdown. "
+                        f"Asegúrate de escribir estrictamente la palabra 'Ruta: [ruta_relativa]' justo en la línea "
+                        f"anterior a abrir el bloque de código con triple backtick (```). "
+                        f"Por favor, regenera todos los archivos de nuevo siguiendo este formato de manera rigurosa."
+                    )
+                else:
+                    prompt_actual = prompt_dev
                 
-                # Escribimos el archivo físicamente en disco
-                try:
-                    os.makedirs(os.path.dirname(clean_path), exist_ok=True)
-                    with open(clean_path, 'w', encoding='utf-8') as f_out:
-                        f_out.write(clean_content)
+                # Inferencia directa rápida, 100% veloz y confiable
+                resultado_dev = j.ask(prompt_actual, model=model_code)
+                
+                # PARSEO PROGRAMÁTICO CON ULTRA-REDUNDANCIAS
+                matches = extraer_archivos_de_markdown(resultado_dev)
+                
+                for rel_path, content in matches:
+                    clean_path = normalizar_ruta_archivo(ruta, rel_path)
+                    clean_content = content.strip()
                     
-                    # Obtenemos la ruta relativa para mostrar en consola de forma estética
-                    display_rel_path = os.path.relpath(clean_path, ruta)
-                    console.print(f"[bold green]✓ Archivo escrito con éxito en disco: {display_rel_path}[/bold green]")
-                    archivos_escritos.append(display_rel_path)
-                except Exception as e_write:
-                    console.print(f"[bold red]❌ Error al escribir {rel_path}: {e_write}[/bold red]")
+                    try:
+                        os.makedirs(os.path.dirname(clean_path), exist_ok=True)
+                        with open(clean_path, 'w', encoding='utf-8') as f_out:
+                            f_out.write(clean_content)
+                        
+                        display_rel_path = os.path.relpath(clean_path, ruta)
+                        console.print(f"[bold green]✓ Archivo escrito con éxito en disco: {display_rel_path}[/bold green]")
+                        archivos_escritos.append(display_rel_path)
+                    except Exception as e_write:
+                        console.print(f"[bold red]❌ Error al escribir {rel_path}: {e_write}[/bold red]")
+                
+                if archivos_escritos:
+                    console.print(f"[bold green]✅ Developer finalizó con éxito en el Intento {intento}. {len(archivos_escritos)} archivos creados físicamente en disco.[/bold green]\n")
+                    break
+                else:
+                    intento += 1
             
-            if archivos_escritos:
-                console.print(f"[bold green]✅ Developer finalizó con éxito. {len(archivos_escritos)} archivos creados físicamente en disco.[/bold green]\n")
-            else:
-                console.print("[bold red]❌ Error: El Developer no estructuró las marcas de archivo y no se escribió código en disco.[/bold red]\n")
+            if not archivos_escritos:
+                console.print("[bold red]❌ Error: La célula de IA colapsó tras 3 intentos de Auto-Curación. Por favor, verifique el estado del motor local de Ollama.[/bold red]\n")
             
             # FASE 3: EL ANALISTA QA (MODO AUDITORÍA DIRECTA)
             console.print("[bold magenta]🕵️‍♂️ Fase 3: El Analista QA está auditando el trabajo...[/bold magenta]")
