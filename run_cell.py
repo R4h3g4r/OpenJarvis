@@ -279,7 +279,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # ==========================================
             
             # FASE 1: EL ARQUITECTO
-            console.print("[bold cyan]🏗️  Fase 1: El Arquitecto está diseñando el Blueprint...[/bold cyan]")
+            console.print("[bold cyan]🏗️  Fase 1: El Arquitecto está designing el Blueprint...[/bold cyan]")
             prompt_arquitecto = f"""
             Eres el Arquitecto de Software Senior. 
             RUTA ABSOLUTA DEL PROYECTO: {ruta}
@@ -290,7 +290,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             {lenguajes_reales}
             
             ENTREGABLE: Escribe un plan técnico detallado. Por cada archivo requerido, 
-            indica la ruta exacta (usando la RUTA ABSOLUTA DEL PROYECTO como base) y el bloque de código completo que debe contener. 
+            indica la ruta de destino exacta relativa al proyecto y el bloque de código completo que debe contener. 
             Toda tu propuesta y código DEBEN estar alineados estrictamente con los lenguajes reales detectados ({lenguajes_reales}).
             NO propongas Java, Maven, XML o pom.xml si el proyecto real está en Python/React.
             NO uses herramientas de sistema. Solo entrega el texto del diseño estructurado.
@@ -302,69 +302,91 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # Mostrar Blueprint de Arquitectura
             console.print(Panel(f"[bold cyan]PLAN TÉCNICO DEL ARQUITECTO:[/bold cyan]\n\n{plan_arquitecto}", title="[bold white]Blueprint de Arquitectura[/bold white]", border_style="cyan"))
             
-            # FASE 2: EL DEVELOPER
-            console.print("\n[bold green]👨‍💻 Fase 2: El Developer está escribiendo los archivos en disco...[/bold green]")
+            # FASE 2: EL DEVELOPER (MODO INFERENCIA DIRECTA Y ROBUSTA, SIN COMPLEJOS REACT LOOPS)
+            console.print("\n[bold green]👨‍💻 Fase 2: El Developer está programando los archivos de código...[/bold green]")
             prompt_dev = f"""
-            Eres un Developer backend. Tu objetivo es crear o modificar archivos dentro de la carpeta: {ruta}
+            Eres el Developer Senior de la célula de desarrollo.
+            Tu misión es tomar el plano técnico del Arquitecto y programar el código fuente completo, real y funcional para cada archivo propuesto.
+            
             --- PLAN DEL ARQUITECTO ---
             {plan_arquitecto}
             --- FIN DEL PLAN ---
             
-            LENGUAJES DEL PROYECTO: {lenguajes_reales}
+            LENGUAJES ACTIVOS DEL PROYECTO: {lenguajes_reales}
             
-            REGLAS DE SALIDA:
-            1. Invoca la herramienta `file_write` con el parámetro 'path' indicando la RUTA COMPLETA absoluta del archivo del proyecto que vas a escribir. No uses el parámetro 'filename', usa estrictamente 'path'.
-            2. Pasa el contenido de código FUENTE PURO, COMPLETO y 100% funcional en el parámetro 'content'. No uses comentarios o placeholders como '// el código restante va aquí'. Escribe TODO el código del archivo de principio a fin de manera profesional.
-            3. NO incluyas markdown (```python o ```) en el parámetro 'content'. Solo entrega el código fuente crudo.
-            4. Si vas a escribir un archivo dentro de una carpeta nueva (como backend/api/controllers/ o similar), asegúrate de pasar siempre el parámetro 'create_dirs': true en tu llamada de herramienta para que el sistema cree las carpetas de destino automáticamente.
+            Instrucciones críticas:
+            - Programa ÚNICAMENTE en los lenguajes detectados del proyecto ({lenguajes_reales}). Prohibido usar Java, Maven o XML.
+            - Escribe el código fuente COMPLETO y funcional de cada archivo de principio a fin de forma impecable. Prohibido usar placeholders, comentarios de omisión tipo '...' o dejar cosas vacías.
+            - Entrega el código de cada archivo encerrado EXACTAMENTE entre estos delimitadores (uno tras otro):
+            
+            === INICIO_ARCHIVO: [ruta_relativa_del_archivo_desde_el_proyecto] ===
+            [código fuente completo aquí]
+            === FIN_ARCHIVO ===
             """
             
-            resultado_dev = j.ask_full(
-                prompt_dev, 
-                model=model_code, 
-                agent="native_react", 
-                tools=["file_write"]
-            )
+            resultado_dev = j.ask(prompt_dev, model=model_code)
             
-            # FILTRO DE SEGURIDAD INDUSTRIAL: Interceptamos y forzamos create_dirs=True para evitar errores de directorios inexistentes
-            if 'tool_calls' in resultado_dev:
-                for call in resultado_dev['tool_calls']:
-                    if call['name'] == 'file_write':
-                        args = call.get('args', {})
-                        # Forzamos que cree las carpetas de forma segura en disco
-                        call['args']['create_dirs'] = True
-                        if 'content' in args:
-                            raw_content = args['content']
-                            clean_content = raw_content.replace("```python", "").replace("```", "").strip()
-                            call['args']['content'] = clean_content
-                            console.print("[bold green]✨ Limpieza de backticks y forzado de creación de directorios aplicados con éxito al archivo escrito por el Developer.[/bold green]")
+            # PARSEO PROGRAMÁTICO INDUSTRIAL CON REDUNDANCIAS:
+            archivos_escritos = []
             
-            console.print(f"✅ Developer terminó. Archivos escritos en disco.\n")
+            # 1. Parseo estándar por delimitadores estrictos
+            matches = re.findall(r"=== INICIO_ARCHIVO:\s*(.*?)\s*===\n(.*?)(?=\n=== FIN_ARCHIVO)", resultado_dev, re.DOTALL)
+            for rel_path, content in matches:
+                clean_path = rel_path.strip().replace("`", "").strip()
+                clean_content = content.replace("```python", "").replace("```typescript", "").replace("```tsx", "").replace("```", "").strip()
+                
+                full_path = os.path.abspath(os.path.join(ruta, clean_path))
+                if full_path.startswith(os.path.abspath(ruta)):
+                    try:
+                        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                        with open(full_path, 'w', encoding='utf-8') as f_out:
+                            f_out.write(clean_content)
+                        console.print(f"[bold green]✓ Archivo escrito con éxito en disco: {clean_path}[/bold green]")
+                        archivos_escritos.append(clean_path)
+                    except Exception as e_write:
+                        console.print(f"[bold red]❌ Error al escribir {clean_path}: {e_write}[/bold red]")
             
-            # FASE 3: EL ANALISTA QA
-            print("🕵️‍♂️ Fase 3: El Analista QA está auditando el trabajo...")
+            # 2. Rescate manual si el modelo usó bloques normales de Markdown
+            if not archivos_escritos:
+                blocks = re.findall(r"```(python|typescript|tsx|ts|js|jsx)\s+Ruta:\s*(.*?)\n(.*?)\n```", resultado_dev, re.DOTALL | re.IGNORECASE)
+                for lang, rel_path, content in blocks:
+                    clean_path = rel_path.strip().replace("`", "").strip()
+                    full_path = os.path.abspath(os.path.join(ruta, clean_path))
+                    if full_path.startswith(os.path.abspath(ruta)):
+                        try:
+                            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                            with open(full_path, 'w', encoding='utf-8') as f_out:
+                                f_out.write(content.strip())
+                            console.print(f"[bold green]✓ Archivo rescatado y escrito en disco: {clean_path}[/bold green]")
+                            archivos_escritos.append(clean_path)
+                        except Exception:
+                            pass
+            
+            if archivos_escritos:
+                console.print(f"[bold green]✅ Developer finalizó con éxito. {len(archivos_escritos)} archivos creados físicamente en disco.[/bold green]\n")
+            else:
+                console.print("[bold red]❌ Error: El Developer no estructuró las marcas de archivo y no se escribió código en disco.[/bold red]\n")
+            
+            # FASE 3: EL ANALISTA QA (MODO AUDITORÍA DIRECTA)
+            console.print("[bold magenta]🕵️‍♂️ Fase 3: El Analista QA está auditando el trabajo...[/bold magenta]")
             prompt_qa = f"""
             Eres un Analista QA de Software con 20 años de experiencia.
-            El Developer acaba de crear archivos basándose en este plan:
+            El Developer acaba de programar los siguientes archivos: {', '.join(archivos_escritos)}
+            
+            PLAN ORIGINAL:
             {plan_arquitecto}
             
-            Usa tu herramienta `shell_exec` para hacer un `ls -la {ruta}` 
-            y usa `file_read` si necesitas verificar el contenido.
+            RESPUESTA DEL DEVELOPER:
+            {resultado_dev}
             
-            Genera un REPORTE DE AUDITORÍA estricto indicando si apruebas o rechazas la construcción.
+            Genera un REPORTE DE AUDITORÍA indicando si apruebas o rechazas la construcción de los archivos programados.
             """
             
-            resultado_qa = j.ask_full(
-                prompt_qa, 
-                model=model_code, 
-                agent="native_react", 
-                tools=["shell_exec", "file_read"]
-            )
-            reporte_qa = resultado_qa["content"]
-            console.print("✅ Reporte de QA finalizado.\n")
+            reporte_qa = j.ask(prompt_qa, model=model_code)
+            console.print("[bold magenta]✅ Reporte de QA finalizado.[/bold magenta]\n")
 
             # FASE 4: EL DOCUMENTADOR
-            print("✍️  Fase 4: El Documentador está redactando el manual técnico...")
+            console.print("[bold yellow]✍️  Fase 4: El Documentador está redactando el manual técnico...[/bold yellow]")
             readme_path = os.path.join(ruta, "README.md")
             
             prompt_doc = f"""
@@ -372,31 +394,25 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Aquí tienes el plan del Arquitecto:
             {plan_arquitecto}
             
-            Y el reporte del Analista QA confirming la existencia de los archivos:
+            Y el reporte del Analista QA:
             {reporte_qa}
             
-            Usa tu herramienta `file_write` para SOBRESCRIBIR o CREAR el archivo `{readme_path}`.
-            
-            Redacta una documentación profesional en Markdown que incluya:
-            1. Descripción del proyecto y los nuevos cambios aplicados.
-            2. Explicación de la arquitectura.
-            3. Instrucciones de instalación y ejecución.
-            
-            REGLA ESTRICTA: Ejecuta la herramienta de inmediato, sin cháchara previa.
+            Escribe un manual de documentación en Markdown para este proyecto.
             """
             
-            resultado_doc = j.ask_full(
-                prompt_doc, 
-                model=model_text, 
-                agent="native_react",
-                tools=["file_write"]
-            )
-            console.print("✅ Documentación técnica generada.\n")
+            readme_content = j.ask(prompt_doc, model=model_text)
+            
+            try:
+                with open(readme_path, 'w', encoding='utf-8') as f_readme:
+                    f_readme.write(readme_content)
+                console.print("[bold yellow]✅ Documentación técnica README.md escrita con éxito.[/bold yellow]\n")
+            except Exception:
+                pass
             
             console.print("================ REPORTE FINAL QA ================")
             console.print(reporte_qa)
             console.print("==================================================")
-            console.print(Panel(f"[bold green]🎉 SPRINT FINALIZADO CON ÉXITO.[/bold green]\n📂 Revisa los archivos de código creados en: [bold green]{ruta}[/bold green]", border_style="green"))
+            console.print(Panel(f"[bold green]🎉 SPRINT FINALIZADO CON ÉXITO.[/bold green]\n📂 {len(archivos_escritos)} archivos de código creados en: [bold green]{ruta}[/bold green]", border_style="green"))
 
 if __name__ == "__main__":
     pass
