@@ -91,7 +91,7 @@ def obtener_contexto_codigo(ruta: str) -> str:
     contexto += "📝 [bold cyan]CÓDIGO FUENTE REAL (Vista previa de alta densidad de imports y funciones):[/bold cyan]\n" + "\n\n".join(file_contents)
     return contexto
 
-def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, model_code: str = MODELO_CODIGO):
+def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, model_code: str = MODELO_CODIGO, force_flow: str = None):
     console.print(Panel(
         f"[bold green]🚀 INICIANDO SPRINT AUTÓNOMO DE LA CÉLULA DE IA[/bold green]\n"
         f"[bold white]📂 Proyecto destino:[/bold white] {ruta}\n"
@@ -100,8 +100,12 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
         border_style="green"
     ))
     
-    # Determinamos el tipo de flujo
-    tipo_flujo = "analisis" if es_tarea_analisis(tarea) else "desarrollo"
+    # Determinamos el tipo de flujo de forma robusta o forzada
+    if force_flow is not None:
+        tipo_flujo = force_flow
+    else:
+        tipo_flujo = "analisis" if es_tarea_analisis(tarea) else "desarrollo"
+        
     console.print(f"[bold yellow]⚡ Flujo de Trabajo Detectado:[/bold yellow] [bold cyan]{tipo_flujo.upper()}[/bold cyan]\n")
     
     # Instanciamos a Jarvis usando el SDK oficial
@@ -349,4 +353,4 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             console.print(Panel(f"[bold green]🎉 SPRINT FINALIZADO CON ÉXITO.[/bold green]\n📂 Revisa los archivos de código creados en: [bold green]{ruta}[/bold green]", border_style="green"))
 
 if __name__ == "__main__":
-    main()
+    pass
