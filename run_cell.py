@@ -126,6 +126,9 @@ def obtener_contexto_codigo(ruta: str) -> str:
 
 def extraer_archivos_de_markdown(texto: str) -> list[tuple[str, str]]:
     """Analiza de forma ultra-flexible el texto de salida del LLM para extraer (ruta_archivo, codigo)."""
+    if not texto:
+        return []
+        
     resultados = []
     
     # 1. Intentar el delimitador estricto primero
@@ -135,42 +138,44 @@ def extraer_archivos_de_markdown(texto: str) -> list[tuple[str, str]]:
             resultados.append((p.strip(), c.strip()))
         return resultados
         
-    # 2. Si no hay delimitadores estrictos, hacemos un análisis ultra-flexible de bloques de Markdown.
-    # Dividimos por bloques de código de markdown.
-    blocks = re.split(r"```(python|typescript|tsx|ts|js|jsx|html|css|toml|xml|bash|sh|json)?", texto)
+    # 2. Búsqueda ultra-robusta de bloques de código Markdown usando finditer (evita cualquier error NoneType)
+    pattern = r"```(?:python|typescript|tsx|ts|js|jsx|html|css|toml|xml|json)?\s*\n(.*?)\n```"
+    matches = list(re.finditer(pattern, texto, re.DOTALL | re.IGNORECASE))
     
-    for i in range(1, len(blocks) - 1, 3):
-        lang = blocks[i]
-        code_content = blocks[i+1]
-        text_before = blocks[i-1]
+    for match in matches:
+        code_content = match.group(1)
+        if not code_content:
+            continue
+        code_content = code_content.strip()
+        start_pos = match.start()
         
-        if not code_content or not code_content.strip():
+        # Obtenemos el texto anterior al bloque de código (hasta 500 caracteres antes)
+        text_before = texto[max(0, start_pos - 500):start_pos]
+        if not text_before:
             continue
             
-        # Buscamos una ruta de archivo en las últimas 6 líneas del texto_antes de este bloque de código
+        # Tomamos las últimas 6 líneas del texto anterior
         lines_before = text_before.strip().split('\n')[-6:]
+        
         file_path = ""
-        
-        # Patrón para capturar una ruta plausible (e.g., backend/api/main.py, models.py, src/App.tsx)
+        # Buscamos una ruta plausible de archivo
         path_pattern = r"([\w\-./]+\.[\w]+)"
-        
         for line in reversed(lines_before):
-            match = re.search(path_pattern, line)
-            if match:
-                candidate = match.group(1).strip()
-                # Limpiamos markdown
+            m = re.search(path_pattern, line)
+            if m:
+                candidate = m.group(1).strip()
+                # Limpiar markdown
                 candidate = candidate.replace("`", "").replace("*", "").replace("#", "").replace("[", "").replace("]", "").strip()
-                # Quitamos diagonales extrañas al inicio
                 candidate = candidate.lstrip('/')
                 
-                # Excluimos binarios, imágenes y bases de datos
+                # Excluir extensiones no deseadas
                 if '/' in candidate or '.' in candidate:
                     if not candidate.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.db', '.sqlite', '.exe', '.zip', '.pdf')):
                         file_path = candidate
                         break
                         
         if file_path:
-            resultados.append((file_path, code_content.strip()))
+            resultados.append((file_path, code_content))
             
     return resultados
 
@@ -380,7 +385,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # PARSEO PROGRAMÁTICO INDUSTRIAL CON ULTRA-REDUNDANCIAS FLUIDAS:
             archivos_escritos = []
             
-            # Analizamos de forma ultra-flexible los bloques de Markdown generados por Qwen
+            # Analizamos de forma ultra-flexible los bloques de Markdown generados por Qwen (evitando NoneType errors)
             matches = extraer_archivos_de_markdown(resultado_dev)
             
             for rel_path, content in matches:
