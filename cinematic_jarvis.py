@@ -5,6 +5,7 @@ import time
 import pyaudio
 from openjarvis import Jarvis
 from openjarvis.tools.audio.ear import EarTool
+from openjarvis.core.types import Message, Role
 from rich.console import Console
 from rich.panel import Panel
 
@@ -52,6 +53,7 @@ def main():
         "           SISTEMA JARVIS EN LÍNEA (LOCAL)        \n"
         "==================================================\n"
         "  • Oído: EarTool / Teclado (Híbrido Seleccionable)\n"
+        "  • Memoria: Historial Conversacional Activo (Stateful)\n"
         "  • Cerebro: LLaMA 3.1 8B (vía Ollama Local)\n"
         "  • Voz: Apple macOS Studio-quality TTS\n"
         "=================================================="
@@ -78,6 +80,7 @@ def main():
         "           SISTEMA JARVIS EN LÍNEA (LOCAL)        \n"
         "==================================================\n"
         "  • Oído: EarTool / Teclado (Híbrido Seleccionable)\n"
+        "  • Memoria: Historial Conversacional Activo (Stateful)\n"
         "  • Cerebro: LLaMA 3.1 8B (vía Ollama Local)\n"
         "  • Voz: Apple macOS Studio-quality TTS\n"
         "=================================================="
@@ -119,8 +122,28 @@ def main():
     else:
         speak("Sistemas en línea, señor. He habilitado el teclado para recibir sus órdenes, pero seguiré respondiéndole con mi sintetizador de voz. ¿En qué puedo ayudarle hoy?")
     
+    # Inicialización del Historial Conversacional
+    messages_history: list[Message] = []
+    
     # El bucle de interacción de voz infinito
     with Jarvis() as j:
+        # Recuperamos la configuración del modelo de Jarvis
+        model_name = j.config.intelligence.default_model or "llama3.1:8b"
+        temperature = j.config.intelligence.temperature or 0.7
+        max_tokens = j.config.intelligence.max_tokens or 2048
+        
+        # Inicializamos el motor del SDK
+        j._ensure_engine()
+        
+        # Prompt de sistema para personificar a Jarvis
+        system_prompt = (
+            "Eres JARVIS, el asistente virtual inteligente de Tony Stark. "
+            "Responde de forma concisa, educada, elegante y con un toque de ingenio británico. "
+            "Trata siempre al usuario como 'señor'. Mantén tus respuestas en un rango de 3 a 7 líneas "
+            "para que sean óptimas de leer y de hablar, a menos que se te solicite una explicación técnica detallada."
+        )
+        messages_history.append(Message(role=Role.SYSTEM, content=system_prompt))
+        
         while True:
             if seleccion == "1" and has_mic and ear is not None:
                 # Escuchamos al usuario usando el micrófono
@@ -145,16 +168,28 @@ def main():
                 speak("Apagando sistemas de voz. Hasta luego, señor.")
                 break
                 
+            # Agregar orden actual del usuario al historial
+            messages_history.append(Message(role=Role.USER, content=user_text))
+            
             # Procesamos la orden con el cerebro de Jarvis
-            console.print("[yellow]🧠 Procesando pensamiento...[/yellow]")
+            console.print("[yellow]🧠 Procesando pensamiento con memoria activa...[/yellow]")
             try:
-                # Usamos ask con el modelo por defecto (llama3.1:8b)
-                response = j.ask(user_text)
+                # Ejecutamos la inferencia con el historial de la conversación
+                result = j._engine.generate(
+                    messages_history,
+                    model=model_name,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                response = result.get("content", "").strip()
                 if not response:
                     response = "No logré procesar esa instrucción, señor."
             except Exception as e:
                 response = f"Hubo un error en los núcleos de procesamiento: {e}"
                 
+            # Guardamos la respuesta del asistente en el historial
+            messages_history.append(Message(role=Role.ASSISTANT, content=response))
+            
             # Hablamos la respuesta
             speak(response)
             time.sleep(0.5)
