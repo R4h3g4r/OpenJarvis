@@ -177,8 +177,8 @@ def extraer_archivos_de_markdown(texto: str) -> list[tuple[str, str]]:
         lines_before = text_before.strip().split('\n')[-6:]
         
         file_path = ""
-        # Buscamos una ruta plausible de archivo
-        path_pattern = r"([\w\-./]+\.[\w]+)"
+        # Patrón para capturar una ruta plausible de código fuente real (evita casar versiones numéricas como 1.9.0 o 0.1.0)
+        path_pattern = r"([\w\-./]+\.(?:py|tsx|ts|jsx|js|html|css|json|toml))"
         for line in reversed(lines_before):
             m = re.search(path_pattern, line)
             if m:
@@ -289,7 +289,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             
             Instrucciones de auditoría técnica:
             - ATENCIÓN: El proyecto está en {lenguajes_reales}. No audites ni propongas soluciones en Java, Maven, pom.xml o lenguajes incorrectos.
-            - Concéntrate exclusivamente en la viabilidad del código, excepciones, imports rotos, fallos de compilación, linters y tipos de datos del proyecto ({lenguajes_reales}).
+            - Concéntrate exclusivamente en la viabilidad del código, excepciones, imports rotos, fallos de compilación, linters and tipos de datos del proyecto ({lenguajes_reales}).
             - Genera un REPORTE DE AUDITORÍA riguroso indicando si apruebas el plan y qué riesgos identificas.
             """
             
@@ -430,9 +430,11 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
                 matches = extraer_archivos_de_markdown(resultado_dev)
                 
                 for rel_path, content in matches:
+                    # Normalizamos de forma ultra-inteligente la ruta para evitar el anidamiento de /Users/will/...
                     clean_path = normalizar_ruta_archivo(ruta, rel_path)
                     clean_content = content.strip()
                     
+                    # Escribimos el archivo físicamente en disco
                     try:
                         os.makedirs(os.path.dirname(clean_path), exist_ok=True)
                         with open(clean_path, 'w', encoding='utf-8') as f_out:
