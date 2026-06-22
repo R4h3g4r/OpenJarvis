@@ -59,4 +59,4 @@ class EarTool(BaseTool):
         if os.path.exists(filename):
             os.remove(filename)
 
-        return ToolResult(content=text if text else "No se detectó voz.")
+        return ToolResult(tool_name="ear", content=text if text else "No se detectó voz.")
