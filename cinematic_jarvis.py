@@ -6,7 +6,7 @@ import time
 import pyaudio
 from openjarvis import Jarvis
 from openjarvis.tools.audio.ear import EarTool
-from openjarvis.core.types import Message, Role
+from openjarvis.core.types import Message, Role, StepType, Trace, TraceStep
 from rich.console import Console
 from rich.panel import Panel
 
@@ -46,6 +46,52 @@ def check_microphone_available() -> bool:
         p.terminate()
     return has_mic
 
+def registrar_traza(query: str, respuesta: str, modelo: str, duracion_segundos: float):
+    """Guarda programáticamente una traza de telemetría local en el TraceStore centralizado de OpenJarvis."""
+    try:
+        from openjarvis.traces.store import TraceStore
+        
+        db_path = os.path.expanduser("~/.openjarvis/traces.db")
+        store = TraceStore(db_path)
+        
+        ahora = time.time()
+        
+        # 1. Crear paso de generación de pensamiento (Inferencia)
+        step_gen = TraceStep(
+            step_type=StepType.GENERATE,
+            timestamp=ahora - duracion_segundos,
+            duration_seconds=duracion_segundos,
+            input={"prompt": query},
+            output={"content": respuesta}
+        )
+        
+        # 2. Crear paso de respuesta final
+        step_resp = TraceStep(
+            step_type=StepType.RESPOND,
+            timestamp=ahora,
+            duration_seconds=0.0,
+            output={"content": respuesta}
+        )
+        
+        # 3. Construir e instanciar la Traza completa
+        trace = Trace(
+            query=query,
+            agent="cinematic_jarvis",
+            model=modelo,
+            engine="ollama",
+            steps=[step_gen, step_resp],
+            result=respuesta,
+            started_at=ahora - duracion_segundos,
+            ended_at=ahora
+        )
+        trace.total_latency_seconds = duracion_segundos
+        
+        # Guardar en SQLite centralizado
+        store.save(trace)
+    except Exception:
+        # Falla silenciosa en caso de error de concurrencia de base de datos
+        pass
+
 def main():
     os.system("clear")
     console.print(Panel(
@@ -55,6 +101,7 @@ def main():
         "==================================================\n"
         "  • Oído: EarTool / Teclado (Híbrido Seleccionable)\n"
         "  • Memoria: Historial Conversacional Activo (Stateful)\n"
+        "  • Telemetría: Traces.db Conexión Web en Tiempo Real\n"
         "  • Cerebro: LLaMA 3.1 8B (vía Ollama Local)\n"
         "  • Voz: Apple macOS Studio-quality TTS\n"
         "=================================================="
@@ -82,6 +129,7 @@ def main():
         "==================================================\n"
         "  • Oído: EarTool / Teclado (Híbrido Seleccionable)\n"
         "  • Memoria: Historial Conversacional Activo (Stateful)\n"
+        "  • Telemetría: Traces.db Conexión Web en Tiempo Real\n"
         "  • Cerebro: LLaMA 3.1 8B (vía Ollama Local)\n"
         "  • Voz: Apple macOS Studio-quality TTS\n"
         "=================================================="
@@ -233,6 +281,7 @@ def main():
             
             # Procesamos la orden con el cerebro de Jarvis
             console.print("[yellow]🧠 Procesando pensamiento con memoria activa...[/yellow]")
+            t_start = time.time()
             try:
                 # Ejecutamos la inferencia con el historial de la conversación
                 result = j._engine.generate(
@@ -244,6 +293,11 @@ def main():
                 response = result.get("content", "").strip()
                 if not response:
                     response = "No logré procesar esa instrucción, señor."
+                
+                # Registro automático de trazas para el Dashboard
+                t_end = time.time()
+                registrar_traza(user_text, response, model_name, t_end - t_start)
+                
             except Exception as e:
                 response = f"Hubo un error en los núcleos de procesamiento: {e}"
                 
