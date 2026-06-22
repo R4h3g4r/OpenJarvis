@@ -65,7 +65,7 @@ def detectar_lenguajes_proyecto(ruta: str) -> str:
     return " y ".join(langs)
 
 def obtener_contexto_codigo(ruta: str) -> str:
-    """Explora recursivamente el proyecto y extrae un contexto ultra-enfocado de alta densidad, apto para Ollama."""
+    """Explora recursivamente el directorio del proyecto y extrae el árbol y contenido de archivos clave."""
     tree_lines = []
     file_contents = []
     
@@ -110,7 +110,7 @@ def obtener_contexto_codigo(ruta: str) -> str:
                         else:
                             content = "".join(lines[:35]).strip()
                             if len(lines) > 35:
-                                content += "\n... [TRUNCADO PARA PRESERVAR MEMORIA DEL CONTEXTO] ..."
+                                content += "\n... [TRUNCADO POR TAMAÑO] ..."
                         
                         rel_path = os.path.relpath(file_path, ruta_norm)
                         file_contents.append(
@@ -123,6 +123,25 @@ def obtener_contexto_codigo(ruta: str) -> str:
     contexto = "🌲 [bold cyan]ÁRBOL DE DIRECTORIOS Y ARCHIVOS DEL PROYECTO ACTUAL:[/bold cyan]\n" + "\n".join(tree_lines) + "\n\n"
     contexto += "📝 [bold cyan]CÓDIGO FUENTE REAL (Vista previa de alta densidad de imports y funciones):[/bold cyan]\n" + "\n\n".join(file_contents)
     return contexto
+
+def normalizar_ruta_archivo(ruta_base: str, ruta_candidata: str) -> str:
+    """Normaliza de forma ultra-inteligente las rutas dadas por el modelo, sean absolutas o con carpetas duplicadas."""
+    clean_path = ruta_candidata.strip().replace("`", "").strip()
+    
+    # Nombre de la carpeta del proyecto
+    nombre_carpeta_proyecto = "erika_manicura"
+    
+    # Si el LLM devolvió una ruta absoluta o parcial que contiene la carpeta del proyecto
+    if nombre_carpeta_proyecto in clean_path:
+        parts = clean_path.split(nombre_carpeta_proyecto + "/")
+        if len(parts) > 1:
+            clean_path = parts[-1]  # Tomamos únicamente la porción después de 'erika_manicura/'
+            
+    # Quitamos diagonales al inicio
+    clean_path = clean_path.lstrip('/')
+    
+    # Retornamos la ruta física absoluta correcta dentro de la carpeta del proyecto
+    return os.path.abspath(os.path.join(ruta_base, clean_path))
 
 def extraer_archivos_de_markdown(texto: str) -> list[tuple[str, str]]:
     """Analiza de forma ultra-flexible el texto de salida del LLM para extraer (ruta_archivo, codigo)."""
@@ -389,20 +408,22 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             matches = extraer_archivos_de_markdown(resultado_dev)
             
             for rel_path, content in matches:
-                clean_path = rel_path.strip().replace("`", "").strip()
+                # Normalizamos de forma ultra-inteligente la ruta para evitar el anidamiento de /Users/will/...
+                clean_path = normalizar_ruta_archivo(ruta, rel_path)
                 clean_content = content.strip()
                 
-                # Validación de seguridad del path
-                full_path = os.path.abspath(os.path.join(ruta, clean_path))
-                if full_path.startswith(os.path.abspath(ruta)):
-                    try:
-                        os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                        with open(full_path, 'w', encoding='utf-8') as f_out:
-                            f_out.write(clean_content)
-                        console.print(f"[bold green]✓ Archivo escrito con éxito en disco: {clean_path}[/bold green]")
-                        archivos_escritos.append(clean_path)
-                    except Exception as e_write:
-                        console.print(f"[bold red]❌ Error al escribir {clean_path}: {e_write}[/bold red]")
+                # Escribimos el archivo físicamente en disco
+                try:
+                    os.makedirs(os.path.dirname(clean_path), exist_ok=True)
+                    with open(clean_path, 'w', encoding='utf-8') as f_out:
+                        f_out.write(clean_content)
+                    
+                    # Obtenemos la ruta relativa para mostrar en consola de forma estética
+                    display_rel_path = os.path.relpath(clean_path, ruta)
+                    console.print(f"[bold green]✓ Archivo escrito con éxito en disco: {display_rel_path}[/bold green]")
+                    archivos_escritos.append(display_rel_path)
+                except Exception as e_write:
+                    console.print(f"[bold red]❌ Error al escribir {rel_path}: {e_write}[/bold red]")
             
             if archivos_escritos:
                 console.print(f"[bold green]✅ Developer finalizó con éxito. {len(archivos_escritos)} archivos creados físicamente en disco.[/bold green]\n")
