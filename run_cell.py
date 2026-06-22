@@ -128,14 +128,14 @@ def normalizar_ruta_archivo(ruta_base: str, ruta_candidata: str) -> str:
     """Normaliza de forma ultra-inteligente las rutas dadas por el modelo, sean absolutas o con carpetas duplicadas."""
     clean_path = ruta_candidata.strip().replace("`", "").strip()
     
-    # Nombre de la carpeta del proyecto
-    nombre_carpeta_proyecto = "erika_manicura"
+    # Nombre de la carpeta del proyecto dinámico (obtenido de la ruta base)
+    nombre_carpeta_proyecto = os.path.basename(ruta_base.rstrip("/\\"))
     
     # Si el LLM devolvió una ruta absoluta o parcial que contiene la carpeta del proyecto
     if nombre_carpeta_proyecto in clean_path:
         parts = clean_path.split(nombre_carpeta_proyecto + "/")
         if len(parts) > 1:
-            clean_path = parts[-1]  # Tomamos únicamente la porción después de 'erika_manicura/'
+            clean_path = parts[-1]  # Tomamos únicamente la porción después de 'nombre_proyecto/'
             
     # Quitamos diagonales al inicio
     clean_path = clean_path.lstrip('/')
@@ -376,7 +376,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # Mostrar Blueprint de Arquitectura
             console.print(Panel(f"[bold cyan]PLAN TÉCNICO DEL ARQUITECTO:[/bold cyan]\n\n{plan_arquitecto}", title="[bold white]Blueprint de Arquitectura[/bold white]", border_style="cyan"))
             
-            # FASE 2: EL DEVELOPER (MODO INFERENCIA DIRECTA Y ROBUSTA, CON BUCLE DE AUTO-CURACIÓN)
+            # FASE 2: EL DEVELOPER (MODO INFERENCIA DIRECTA Y ROBUSTA, SIN COMPLEJOS REACT LOOPS)
             console.print("\n[bold green]👨‍💻 Fase 2: El Developer está programando los archivos de código...[/bold green]")
             prompt_dev = f"""
             Eres el Developer Senior de la célula de desarrollo.
