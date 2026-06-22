@@ -32,7 +32,7 @@ def es_tarea_analisis(tarea: str) -> bool:
     return any(keyword in tarea.lower() for keyword in keywords)
 
 def obtener_contexto_codigo(ruta: str) -> str:
-    """Explora recursivamente el directorio del proyecto y extrae el árbol y contenido de archivos clave."""
+    """Explora recursivamente el proyecto y extrae un contexto ultra-enfocado de alta densidad, apto para Ollama."""
     tree_lines = []
     file_contents = []
     
@@ -67,10 +67,17 @@ def obtener_contexto_codigo(ruta: str) -> str:
             if ext in ['.py', '.ts', '.tsx', '.js', '.jsx', '.html', '.css', '.toml']:
                 try:
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file_obj:
-                        content = file_obj.read().strip()
-                        # Limitar tamaño por archivo para evitar desbordar el contexto del LLM
-                        if len(content) > 3000:
-                            content = content[:3000] + "\n... [TRUNCADO POR TAMAÑO] ..."
+                        lines = file_obj.readlines()
+                        
+                        # FILTRADO DE ALTA DENSIDAD:
+                        # Si es un manifiesto o archivo pequeño, leemos completo.
+                        # Si es un archivo de código grande, solo leemos las primeras 35 líneas para ver los imports, la estructura y funciones sin saturar la memoria de Ollama.
+                        if f in ['requirements.txt', 'package.json', 'run.py', 'vite.config.ts', 'database.py']:
+                            content = "".join(lines).strip()
+                        else:
+                            content = "".join(lines[:35]).strip()
+                            if len(lines) > 35:
+                                content += "\n... [TRUNCADO PARA PRESERVAR MEMORIA DEL CONTEXTO] ..."
                         
                         rel_path = os.path.relpath(file_path, ruta_norm)
                         file_contents.append(
@@ -80,8 +87,8 @@ def obtener_contexto_codigo(ruta: str) -> str:
                 except Exception as e:
                     file_contents.append(f"❌ Error al leer {f}: {e}")
                     
-    contexto = "🌲 [bold cyan]ÁRBOL DE DIRECTORIOS Y ARCHIVOS:[/bold cyan]\n" + "\n".join(tree_lines) + "\n\n"
-    contexto += "📝 [bold cyan]CÓDIGO FUENTE DE LOS ARCHIVOS DEL PROYECTO:[/bold cyan]\n" + "\n\n".join(file_contents)
+    contexto = "🌲 [bold cyan]ÁRBOL DE DIRECTORIOS Y ARCHIVOS DEL PROYECTO ACTUAL:[/bold cyan]\n" + "\n".join(tree_lines) + "\n\n"
+    contexto += "📝 [bold cyan]CÓDIGO FUENTE REAL (Vista previa de alta densidad de imports y funciones):[/bold cyan]\n" + "\n\n".join(file_contents)
     return contexto
 
 def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, model_code: str = MODELO_CODIGO):
@@ -126,13 +133,15 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             --- FIN DEL CONTEXTO ---
             
             Instrucciones de contenido estricto:
-            - Prohibido redactar textos administrativos, corporativos, de capacitación de equipos o de marketing.
-            - Sé sumamente técnico, concreto y específico. Menciona nombres de archivos reales del proyecto, funciones, variables, imports y rutas.
+            - ATENCIÓN: Como puedes ver en el contexto, el proyecto está programado en Python (backend) y React (frontend).
+            - ESTÁ COMPLETAMENTE PROHIBIDO proponer soluciones en Java, Maven, XML o cualquier lenguaje que no coincida con el proyecto inyectado.
+            - NO propongas discursos corporativos, de capacitación de equipos o de recursos humanos.
+            - Sé sumamente técnico, concreto y específico. Menciona nombres de archivos reales de Python y React del proyecto, imports y rutas.
             - Estructura tu reporte de arquitectura detallando:
-              1. DIAGNÓSTICO DE ESTRUCTURA Y ARCHIVOS: Analiza la jerarquía de archivos inyectada. Propón una reestructuración limpia si es necesario.
-              2. REVISIÓN CRÍTICA DE BACKEND (PYTHON): Evalúa la calidad, imports, modularidad, controladores, base de datos y tipado en los archivos python inyectados.
-              3. REVISIÓN CRÍTICA DE FRONTEND (REACT): Evalúa el uso de componentes, hooks de datos, llamadas de API, package.json y maquetación de React inyectada.
-              4. MEJORAS DE CÓDIGO ESPECÍFICAS: Describe los cambios exactos de lógica de programación por cada archivo (ej: agregar Pydantic schemas para validación, configurar rutas API Router modulares, refactorizar estados en componentes React).
+              1. DIAGNÓSTICO DE ESTRUCTURA Y ARCHIVOS: Analiza la jerarquía de archivos de Python y React inyectada. Propón una reestructuración limpia si es necesario.
+              2. REVISIÓN CRÍTICA DE BACKEND (PYTHON / FASTAPI): Evalúa la calidad, imports, controladores y base de datos en los archivos python inyectados.
+              3. REVISIÓN CRÍTICA DE FRONTEND (REACT / VITE / TS): Evalúa el uso de componentes, hooks de datos, llamadas de API y package.json de React inyectados.
+              4. MEJORAS DE CÓDIGO ESPECÍFICAS: Describe los cambios exactos de lógica de programación por cada archivo (ej: configurar routers en main.py, refactorizar estados en App.tsx).
             """
             
             # Inferencia directa sin ReAct, 100% veloz y confiable, sin timeouts
@@ -147,7 +156,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # FASE 2: EL ANALISTA QA AUDITA EL PLAN DE MEJORAS
             console.print("\n[bold magenta]🕵️‍♂️ Fase 2: El Analista QA está auditando críticamente el plan del Arquitecto...[/bold magenta]")
             prompt_qa = f"""
-            Eres el Analista QA Senior de la célula con 20 años de experiencia en auditoría de código y calidad técnica.
+            Eres el Analista QA Senior de la célula con 20 años de experiencia en auditoría técnica.
             Tu misión es auditar críticamente el plan de mejoras propuesto por el Arquitecto sobre el código real inyectado.
             
             --- CONTEXTO COMPLETO DEL PROYECTO LOCAL ---
@@ -158,11 +167,12 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             --- FIN DEL PLAN ---
             
             Instrucciones de auditoría técnica:
+            - ATENCIÓN: El proyecto está en Python y React. No audites ni propongas soluciones en Java, Maven o XML.
             - Concéntrate exclusivamente en la viabilidad del código, excepciones, imports rotos, fallos de compilación, linters y tipos de datos de Python/React.
             - Genera un REPORTE TÉCNICO DE AUDITORÍA QA detallando:
               1. BUGS POTENCIALES Y RIESGOS LÓGICOS en las propuestas del Arquitecto.
-              2. ROBUSTEZ DE CÓDIGO REQUERIDA: Propón manejos de excepciones específicos (Try/Except en Python, Try-Catch en JS/React), validaciones de tipo (TypeScript, Pydantic) y asincronía.
-              3. ESPECIFICACIÓN DE PRUEBAS AUTOMATIZADAS: Sugiere pruebas específicas unitarias o de integración para asegurar que las mejoras no rompan el proyecto.
+              2. ROBUSTEZ DE CÓDIGO REQUERIDA: Propón manejos de excepciones específicos (Try/Except en Python, Try-Catch en JS/React) y asincronía.
+              3. ESPECIFICACIÓN DE PRUEBAS AUTOMATIZADAS: Sugiere pruebas específicas unitarias o de integración para asegurar que las mejoras no rompan el proyecto en Python/React.
             """
             
             reporte_qa = j.ask(prompt_qa, model=model_code) # Usamos el modelo ultra-experto en lógica
@@ -188,9 +198,10 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             {reporte_qa}
             
             Instrucciones de redacción técnica:
-            - PROHIBIDO utilizar jerga de marketing, administración, recursos humanos o capacitación de equipos (no hables de mentores, cursos, reuniones o metodologías ágiles). El tono debe ser puramente de ingeniería de software.
+            - PROHIBIDO proponer nada que no sea Python (FastAPI/SQLAlchemy) y React (TypeScript). Este es un proyecto de Python y React, no uses Java ni Maven ni XML.
+            - PROHIBIDO utilizar jerga de marketing, administración o capacitación. El tono debe ser puramente de ingeniería de software.
             - Estructura el archivo PLAN_DE_MEJORAS.md exactamente con estas secciones:
-              1. DIAGNÓSTICO TÉCNICO DE CALIDAD DE CÓDIGO (Hallazgos puntuales en los archivos reales del backend y frontend).
+              1. DIAGNÓSTICO TÉCNICO DE CALIDAD DE CÓDIGO (Hallazgos puntuales en los archivos de Python y React reales).
               2. ARQUITECTURA DE ARCHIVOS PROPUESTA (Árbol visual de carpetas modificado).
               3. PLAN DE REFACCIÓN BACKEND PYTHON / FASTAPI (Lógica exacta de código, imports, rutas, controladores y bases de datos).
               4. PLAN DE REFACCIÓN FRONTEND REACT / TYPESCRIPT (Estructura de componentes, hooks de datos, llamadas a API y package.json).
@@ -338,4 +349,4 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             console.print(Panel(f"[bold green]🎉 SPRINT FINALIZADO CON ÉXITO.[/bold green]\n📂 Revisa los archivos de código creados en: [bold green]{ruta}[/bold green]", border_style="green"))
 
 if __name__ == "__main__":
-    run_software_factory(RUTA_PROYECTO, REQUERIMIENTO)
+    main()
