@@ -6,7 +6,7 @@ import time
 import pyaudio
 from openjarvis import Jarvis
 from openjarvis.tools.audio.ear import EarTool
-from openjarvis.core.types import Message, Role, StepType, Trace, TraceStep
+from openjarvis.core.types import Message, Role
 from rich.console import Console
 from rich.panel import Panel
 
@@ -50,6 +50,7 @@ def registrar_traza(query: str, respuesta: str, modelo: str, duracion_segundos: 
     """Guarda programáticamente una traza de telemetría local en el TraceStore centralizado de OpenJarvis."""
     try:
         from openjarvis.traces.store import TraceStore
+        from openjarvis.core.types import StepType, Trace, TraceStep
         
         db_path = os.path.expanduser("~/.openjarvis/traces.db")
         store = TraceStore(db_path)
@@ -171,8 +172,9 @@ def main():
     else:
         speak("Sistemas en línea, señor. He habilitado el teclado para recibir sus órdenes, pero seguiré respondiéndole con mi sintetizador de voz. ¿En qué puedo ayudarle hoy?")
     
-    # Inicialización del Historial Conversacional
+    # Inicialización del Historial Conversacional y de Memoria de Rutas
     messages_history: list[Message] = []
+    last_ruta_proyecto = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/"
     
     # El bucle de interacción de voz infinito
     with Jarvis() as j:
@@ -231,8 +233,11 @@ def main():
                         ruta_proyecto = os.path.abspath(os.path.join("/Users/will/Documents/OpenJarvis/OpenJarvis/", extracted_path)) + '/'
                     else:
                         ruta_proyecto = extracted_path
+                    # Actualizamos la memoria del último espacio de trabajo activo
+                    last_ruta_proyecto = ruta_proyecto
                 else:
-                    ruta_proyecto = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/"
+                    # Si no se especifica ruta en la orden, recuperamos la última ruta activa de la memoria de sesión
+                    ruta_proyecto = last_ruta_proyecto
                 
                 mejores_path = os.path.join(ruta_proyecto, "PLAN_DE_MEJORAS.md")
                 
@@ -244,13 +249,13 @@ def main():
                         try:
                             with open(mejores_path, 'r', encoding='utf-8') as f_plan:
                                 plan_md = f_plan.read().strip()
-                            speak("Excelente decisión, señor. He leído el archivo PLAN_DE_MEJORAS.md de su espacio de trabajo. Inicializando el protocolo de desarrollo de la Célula de IA para implementar este plan.")
+                            speak(f"Excelente decisión, señor. He leído el archivo PLAN_DE_MEJORAS.md de su espacio de trabajo en {os.path.basename(ruta_proyecto.rstrip('/\\'))}. Inicializando el protocolo de desarrollo de la Célula de IA para implementar este plan.")
                             # La tarea es el plan de mejoras leído
                             tarea_celula = f"Implementar el siguiente plan de mejoras técnico:\n\n{plan_md}"
                         except Exception as e_p:
                             speak(f"Señor, tuve un problema al leer el plan de mejoras de disco: {e_p}. Procederé con una implementación estándar.")
                     else:
-                        speak("Señor, no he encontrado un archivo PLAN_DE_MEJORAS.md en su proyecto. Le sugiero primero generar un plan de mejoras de su proyecto.")
+                        speak(f"Señor, no he encontrado un archivo PLAN_DE_MEJORAS.md en el proyecto activo ({os.path.basename(ruta_proyecto.rstrip('/\\'))}). Le sugiero primero generar un plan de mejoras de su proyecto.")
                         continue
                 else:
                     # Extraemos la orden para comando general
@@ -271,7 +276,7 @@ def main():
                     run_software_factory(ruta_proyecto, tarea_celula, force_flow=flujo_forzado)
                     
                     # Al terminar, avisamos al señor
-                    speak("Sprint de desarrollo finalizado con éxito, señor. El código ha sido programado de forma autónoma con Qwen 2.5 Coder, auditado rigurosamente por el Analista de Calidad y documentado en el README de su espacio de trabajo. Puede revisar la carpeta 'erika_manicura' ahora mismo.")
+                    speak(f"Sprint de desarrollo finalizado con éxito, señor. El código ha sido programado de forma autónoma con Qwen 2.5 Coder, auditado rigurosamente por el Analista de Calidad y documentado en el README de su espacio de trabajo. Puede revisar la carpeta '{os.path.basename(ruta_proyecto.rstrip('/\\'))}' ahora mismo.")
                 except Exception as ex_cell:
                     speak(f"Señor, tuvimos una interrupción al desplegar los agentes: {ex_cell}")
                 continue
