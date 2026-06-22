@@ -21,8 +21,6 @@ MODELO_CODIGO = "qwen2.5-coder:14b"
 if len(sys.argv) > 2:
     RUTA_PROYECTO = sys.argv[1]
     REQUERIMIENTO = sys.argv[2]
-    if len(sys.argv) > 3:
-        MODELO_BASE = sys.argv[3]
 else:
     # Fallback solo para pruebas si lo ejecutas a mano sin parámetros
     RUTA_PROYECTO = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/"
@@ -56,21 +54,23 @@ def obtener_contexto_codigo(ruta: str) -> str:
         
         subindent = ' ' * 4 * (level + 1)
         for f in files:
-            if f.startswith('.') or f == '.DS_Store' or f in ['PLAN_DE_MEJORAS.md', 'README.md']:
+            # FILTRO DE SEGURIDAD DE CONTEXTO: Ignorar archivos basura, pesados o de bloqueo (ej: package-lock.json de 90KB)
+            if f.startswith('.') or f == '.DS_Store' or f in ['PLAN_DE_MEJORAS.md', 'README.md', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb', 'poetry.lock', 'uv.lock']:
                 continue
             tree_lines.append(f"{subindent}└── {f}")
             
-            # Si es un archivo de texto de código fuente, leemos su contenido
+            # Si es un archivo de texto de código fuente real, leemos su contenido
             file_path = os.path.join(root, f)
             ext = os.path.splitext(f)[1].lower()
-            # Leemos archivos clave de backend o frontend
-            if ext in ['.py', '.json', '.txt', '.ts', '.tsx', '.js', '.jsx', '.html', '.css', '.toml']:
+            
+            # Solo leer archivos de código fuente reales para mantener el contexto ligero y evitar fallos del modelo local
+            if ext in ['.py', '.ts', '.tsx', '.js', '.jsx', '.html', '.css', '.toml']:
                 try:
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as file_obj:
                         content = file_obj.read().strip()
                         # Limitar tamaño por archivo para evitar desbordar el contexto del LLM
-                        if len(content) > 4000:
-                            content = content[:4000] + "\n... [TRUNCADO POR TAMAÑO] ..."
+                        if len(content) > 3000:
+                            content = content[:3000] + "\n... [TRUNCADO POR TAMAÑO] ..."
                         
                         rel_path = os.path.relpath(file_path, ruta_norm)
                         file_contents.append(
@@ -127,8 +127,8 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Analiza de forma exhaustiva la estructura del proyecto, las dependencias y la calidad del código fuente inyectado.
             Genera un REPORTE DE ARQUITECTURA detallando:
             1. Fortalezas identificadas del código actual.
-            2. Puntos débiles (cuellos de botella, código duplicado, falta de tipado, mala estructuración, etc.).
-            3. Plan de Mejoras paso a paso para optimizar la modularidad, rendimiento, documentación y calidad.
+            2. Puntos débiles específicos (cuellos de botella, código duplicado, falta de tipado, mala estructuración, etc. basándote en el código inyectado).
+            3. Plan de Mejoras paso a paso para optimizar la modularidad, rendimiento, documentación y calidad de forma específica usando Python (para backend) y React (para frontend).
             """
             
             # Inferencia directa sin ReAct, 100% veloz y confiable, sin timeouts
@@ -181,8 +181,8 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             
             Genera un archivo Markdown completo que contenga:
             1. Resumen Ejecutivo del Análisis.
-            2. Áreas de Oportunidad Identificadas (Puntos Débiles).
-            3. Plan de Acción Técnico Detallado (Pasos concretos de desarrollo).
+            2. Áreas de Oportunidad Identificadas (Puntos Débiles basados en el análisis real).
+            3. Plan de Acción Técnico Detallado (Pasos concretos de desarrollo usando Python y React).
             4. Riesgos y Mitigación Operativa (Auditoría QA).
             
             Entrega ÚNICAMENTE el código Markdown final del documento. No agregues saludos ni explicaciones previas.

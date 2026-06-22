@@ -168,26 +168,45 @@ def main():
                 speak("Apagando sistemas de voz. Hasta luego, señor.")
                 break
                 
-            # COMANDO ESPECIAL: Lanzar la Célula de IA
-            if user_text.lower().startswith("/cell ") or "ejecuta la célula" in user_text.lower() or "ejecuta la celula" in user_text.lower():
-                # Extraemos la orden
-                if user_text.lower().startswith("/cell "):
-                    tarea_celula = user_text[6:].strip()
+            # COMANDO ESPECIAL: Aplicar o Ejecutar el Plan de Mejoras guardado en PLAN_DE_MEJORAS.md
+            is_exec_plan = any(phrase in user_text.lower() for phrase in ["ejecuta el plan", "aplica el plan", "ejecutar el plan", "aplica las mejoras", "ejecuta las mejoras"])
+            if is_workspace_action := is_exec_plan or user_text.lower().startswith("/cell ") or "ejecuta la célula" in user_text.lower() or "ejecuta la celula" in user_text.lower():
+                # Ruta del proyecto
+                ruta_proyecto = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/"
+                mejores_path = os.path.join(ruta_proyecto, "PLAN_DE_MEJORAS.md")
+                
+                tarea_celula = ""
+                
+                if is_exec_plan:
+                    # Intentamos leer el archivo PLAN_DE_MEJORAS.md
+                    if os.path.exists(mejores_path):
+                        try:
+                            with open(mejores_path, 'r', encoding='utf-8') as f_plan:
+                                plan_md = f_plan.read().strip()
+                            speak("Excelente decisión, señor. He leído el archivo PLAN_DE_MEJORAS.md de su espacio de trabajo. Inicializando el protocolo de desarrollo de la Célula de IA para implementar este plan.")
+                            # La tarea es el plan de mejoras leído
+                            tarea_celula = f"Implementar el siguiente plan de mejoras técnico:\n\n{plan_md}"
+                        except Exception as e_p:
+                            speak(f"Señor, tuve un problema al leer el plan de mejoras de disco: {e_p}. Procederé con una implementación estándar.")
+                    else:
+                        speak("Señor, no he encontrado un archivo PLAN_DE_MEJORAS.md en su proyecto. Le sugiero primero generar un plan de mejoras de su proyecto.")
+                        continue
                 else:
-                    tarea_celula = user_text.lower().replace("ejecuta la célula", "").replace("ejecuta la celula", "").strip()
+                    # Extraemos la orden para comando general
+                    if user_text.lower().startswith("/cell "):
+                        tarea_celula = user_text[6:].strip()
+                    else:
+                        tarea_celula = user_text.lower().replace("ejecuta la célula", "").replace("ejecuta la celula", "").strip()
                 
                 if not tarea_celula:
                     tarea_celula = "Optimizar la organización de archivos de erika_manicura y agregar comentarios descriptivos en el código."
                 
-                speak("Muy bien, señor. Inicializando el protocolo de desarrollo autónomo de la Célula de IA. Estoy desplegando al Arquitecto, al Developer, al Analista de Calidad y al Documentador en sus núcleos de procesamiento local. Esto tomará un momento.")
+                speak("Sistemas cargados. Desplegando Arquitecto, Developer (Qwen 2.5 Coder), Analista QA y Documentador para ejecutar el sprint autónomo en su carpeta de trabajo.")
                 
                 try:
-                    # Importamos dinámicamente y ejecutamos
+                    # Importamos dinámicamente y ejecutamos el sprint de desarrollo
                     from run_cell import run_software_factory
-                    ruta_por_defecto = "/Users/will/Documents/OpenJarvis/OpenJarvis/workspace/erika_manicura/"
-                    
-                    # Ejecutamos la fábrica de software
-                    run_software_factory(ruta_por_defecto, tarea_celula)
+                    run_software_factory(ruta_proyecto, tarea_celula)
                     
                     # Al terminar, avisamos al señor
                     speak("Sprint de desarrollo finalizado con éxito, señor. El código ha sido programado de forma autónoma con Qwen 2.5 Coder, auditado rigurosamente por el Analista de Calidad y documentado en el README de su espacio de trabajo. Puede revisar la carpeta 'erika_manicura' ahora mismo.")
