@@ -66,7 +66,7 @@ def detectar_lenguajes_proyecto(ruta: str) -> str:
     return " y ".join(langs)
 
 def obtener_contexto_codigo(ruta: str) -> str:
-    """Explora recursivamente el proyecto y extrae un contexto ultra-enfocado de alta densidad, apto para Ollama."""
+    """Explora recursivamente el directorio del proyecto y extrae el árbol y contenido de archivos clave."""
     tree_lines = []
     file_contents = []
     
@@ -111,7 +111,7 @@ def obtener_contexto_codigo(ruta: str) -> str:
                         else:
                             content = "".join(lines[:35]).strip()
                             if len(lines) > 35:
-                                content += "\n... [TRUNCADO PARA PRESERVAR MEMORIA DEL CONTEXTO] ..."
+                                content += "\n... [TRUNCADO POR TAMAÑO] ..."
                         
                         rel_path = os.path.relpath(file_path, ruta_norm)
                         file_contents.append(
@@ -178,7 +178,7 @@ def extraer_archivos_de_markdown(texto: str) -> list[tuple[str, str]]:
         lines_before = text_before.strip().split('\n')[-6:]
         
         file_path = ""
-        # Buscamos una ruta plausible de archivo
+        # Patrón para capturar una ruta plausible de código fuente real (evita casar versiones numéricas como 1.9.0 o 0.1.0)
         path_pattern = r"([\w\-./]+\.(?:py|tsx|ts|jsx|js|html|css|json|toml))"
         for line in reversed(lines_before):
             m = re.search(path_pattern, line)
@@ -297,12 +297,18 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             {codigo_contexto}
             --- FIN DEL CONTEXTO ---
             
-            Instrucciones de contenido estricto:
-            - ATENCIÓN ABSOLUTA: El proyecto utiliza de forma real {lenguajes_reales}. 
-            - ESTÁ COMPLETAMENTE PROHIBIDO proponer soluciones en Java, Maven, pom.xml, C# o lenguajes que no coincidan con los activos detectados ({lenguajes_reales}). Toda tu propuesta debe estar alineada estrictamente con los lenguajes reales detectados.
-            - NO propongas discursos corporativos, de capacitación de equipos o de recursos humanos.
-            - Sé sumamente técnico, concreto y específico. Menciona nombres de archivos reales del proyecto, imports y rutas.
-            - Estructura tu reporte de arquitectura detallando:
+            MANDATOS ESTRICTOS DE ARQUITECTURA SÓLIDA (WORLD-CLASS SOFTWARE MANDATES):
+            1. ARQUITECTURA LIMPIA Y SEPARACIÓN DE RESPONSABILIDADES: Divide de forma rigurosa el sistema en capas lógicas:
+               - Capa de Dominio (Entidades de negocio y esquemas).
+               - Capa de Repositorio (Persistencia, consultas, base de datos).
+               - Capa de Servicio / Operaciones (Lógica de negocio, transacciones, delegación explícita).
+               - Capa de API / Controladores (Endpoints, ruteadores, mapeo HTTP, validación de entrada).
+            2. PRINCIPIOS SOLID Y DRY: Prohibido duplicar código. Toda lógica compleja debe estar encapsulada y delegada de forma explícita en métodos reutilizables.
+            3. TIPADO ESTÁTICO ESTRICTO: En Python, exige el uso de 'type hints' en todos los argumentos y retornos de funciones (módulo `typing`). En React, exige TypeScript estricto con interfaces claras. Prohibido el tipo `any`.
+            4. MANEJO DE EXCEPCIONES INTEGRAL: Diseña un control de errores exhaustivo con bloques `try/except` en Python y `try/catch` en React para cada punto crítico.
+            5. PROHIBIDO proponer soluciones en Java, Maven, pom.xml, C# o lenguajes que no coincidan con los activos detectados ({lenguajes_reales}). Toda tu propuesta debe estar alineada estrictamente con los lenguajes reales detectados.
+            
+            Estructura tu reporte de arquitectura detallando:
               1. DIAGNÓSTICO DE ESTRUCTURA Y ARCHIVOS: Analiza la jerarquía de archivos inyectada. Propón una reestructuración limpia si es necesario.
               2. REVISIÓN CRÍTICA DE BACKEND (PYTHON / FASTAPI / SQLALCHEMY): Evalúa la calidad, imports, controladores y base de datos en los archivos python inyectados.
               3. REVISIÓN CRÍTICA DE FRONTEND (REACT / VITE / TS): Evalúa el uso de componentes, hooks de datos, llamadas de API y package.json de React inyectados.
@@ -336,10 +342,13 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             {plan_arquitecto}
             --- FIN DEL PLAN ---
             
-            Instrucciones de auditoría técnica:
+            Instrucciones de auditoría técnica rigurosa:
             - ATENCIÓN: El proyecto está en {lenguajes_reales}. No audites ni propongas soluciones en Java, Maven, pom.xml o lenguajes incorrectos.
-            - Concéntrate exclusivamente en la viabilidad del código, excepciones, imports rotos, fallos de compilación, linters and tipos de datos del proyecto ({lenguajes_reales}).
-            - Genera un REPORTE DE AUDITORÍA riguroso indicando si apruebas el plan y qué riesgos identificas.
+            - Audita de forma implacable la viabilidad del código, excepciones, imports rotos, fallos de compilación, linters y tipos de datos del proyecto ({lenguajes_reales}).
+            - Exige y evalúa:
+              1. BUGS POTENCIALES Y RIESGOS LÓGICOS en las propuestas de reestructuración del Arquitecto.
+              2. ROBUSTEZ DE EXCEPCIONES Y TIPADOS: Propón manejos de excepciones específicos (Try/Except en Python, Try-Catch en JS/React) y tipado estático robusto.
+              3. PLAN DE PRUEBAS AUTOMATIZADAS: Sugiere la creación de pruebas unitarias y de integración detalladas para asegurar la calidad de la lógica.
             """
             
             t_start = time.time()
@@ -366,11 +375,15 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             --- REPORTE DE AUDITORÍA DE QA ---
             {reporte_qa}
             
-            Genera un archivo Markdown completo que contenga:
-            1. Resumen Ejecutivo del Análisis.
-            2. Áreas de Oportunidad Identificadas (Puntos Débiles basados en el análisis real).
-            3. Plan de Acción Técnico Detallado (Pasos concretos de desarrollo utilizando estrictamente los lenguajes {lenguajes_reales}).
-            4. Riesgos y Mitigación Operativa (Auditoría QA).
+            Instrucciones de redacción técnica:
+            - PROHIBIDO proponer nada que no sea {lenguajes_reales}. No uses Java ni Maven ni XML.
+            - PROHIBIDO utilizar jerga de marketing, administración o capacitación. El tono debe ser puramente de ingeniería de software.
+            - Estructura el archivo PLAN_DE_MEJORAS.md exactamente con estas secciones:
+              1. DIAGNÓSTICO TÉCNICO DE CALIDAD DE CÓDIGO (Hallazgos puntuales de arquitectura en los archivos reales del backend y frontend).
+              2. ARQUITECTURA DE ARCHIVOS PROPUESTA (Árbol visual de carpetas modificado bajo principios de Arquitectura Limpia).
+              3. PLAN DE REFACCIÓN BACKEND PYTHON / FASTAPI (Lógica exacta de código, imports, rutas, controladores, servicios y bases de datos con tipados y manejo de errores).
+              4. PLAN DE REFACCIÓN FRONTEND REACT / TYPESCRIPT (Estructura de componentes, hooks de datos, llamadas a API y package.json).
+              5. ESPECIFICACIÓN DE SEGURIDAD Y CONTROL QA (Pruebas unitarias, excepciones try/except, linters y tipados estáticos).
             
             Entrega ÚNICAMENTE el código Markdown final del documento. No agregues saludos ni explicaciones previas. Prohibido usar Java, Maven, pom.xml o lenguajes que no estén en el proyecto.
             """
@@ -416,6 +429,19 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             --- LENGUAJES ACTIVOS REALES DETECTADOS EN EL PROYECTO ---
             {lenguajes_reales}
             
+            MANDATOS DE ARQUITECTURA Y PATRONES DE DISEÑO ESTRICTOS:
+            1. ARQUITECTURA LIMPIA Y DELEGACIÓN: Diseña el sistema delegando responsabilidades de forma explícita. Separa el Backend en capas independientes:
+               - `api/`: Controllers, rutas de FastAPI, HTTPException, etc.
+               - `service/`: Operations, lógica de negocio pura, validaciones complejas.
+               - `repository/`: Database, SQLAlchemy, sesiones de DB, modelos de datos relacionales.
+               Y el Frontend en:
+               - `components/`: Componentes de interfaz puros de presentación.
+               - `hooks/`: Custom React hooks para fetching y manipulación de estado.
+               - `services/`: api.ts para las llamadas HTTP crudas.
+            2. SOLID & DRY: Prohibido tener lógica duplicada. Diseña el código usando principios SÓLIDOS y patrones reconocidos (e.g. Dependency Injection, Repository Pattern, Singleton, Controller-Service).
+            3. TIPADO ESTÁTICO RIGUROSO: Exige siempre el tipado fuerte y explícito en todos los archivos de Python (type hints) y React (TypeScript). Prohibido el uso de `any`.
+            4. MANEJO DE EXCEPCIONES Y LOGGING: Especifica el control de errores exhaustivo y la limpieza de conexiones (por ejemplo, try-catch y try-finally con session.close()).
+            
             ENTREGABLE: Escribe un plan técnico detallado. Por cada archivo requerido, 
             indica la ruta de destino exacta relativa al proyecto y el bloque de código completo que debe contener. 
             Toda tu propuesta y código DEBEN estar alineados estrictamente con los lenguajes reales detectados ({lenguajes_reales}).
@@ -443,10 +469,12 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             
             LENGUAJES ACTIVOS DEL PROYECTO: {lenguajes_reales}
             
-            Instrucciones críticas:
-            - Programa ÚNICAMENTE en los lenguajes detectados del proyecto ({lenguajes_reales}). Prohibido usar Java, Maven o XML.
-            - Escribe el código fuente COMPLETO y funcional de cada archivo de principio a fin de forma impecable. Prohibido usar placeholders, comentarios de omisión tipo '...' o dejar cosas vacías.
-            - Por cada archivo que vayas a programar, escribe el nombre del archivo claramente en una línea y luego encierra su código en un bloque estándar de markdown. Sigue este formato exacto para cada archivo:
+            REGLAS DE CODIFICACIÓN E INGENIERÍA DE EXCELENCIA:
+            1. ARQUITECTURA LIMPIA Y DELEGACIÓN: Separa y delega estrictamente tus archivos de código de acuerdo al plano del Arquitecto. Prohibido mezclar lógica de negocio dentro de los controladores de rutas.
+            2. CÓDIGO COMPLETO Y FUNCIONAL: Escribe TODO el código fuente funcional de cada archivo de principio a fin de forma impecable. PROHIBIDO usar placeholders, comentarios de omisión tipo '...' o dejar cosas incompletas. Cada import, clase, método y manejo de excepciones debe estar completamente escrito.
+            3. MANEJO DE EXCEPCIONES Y RESILIENCIA: Todo acceso a base de datos, llamadas HTTP o I/O debe estar encapsulado en bloques `try/except` robustos en Python y `try/catch` en React. En los controladores y servicios de Python, asegura el cierre de sesiones de base de datos en bloques `try/finally {('session.close()')}`.
+            4. TIPADO ESTÁTICO: Utiliza tipado fuerte y explícito en todos los archivos de Python (type hints) y React (TypeScript). Prohibido el uso de `any`.
+            5. Por cada archivo que vayas a programar, escribe el nombre del archivo claramente en una línea y luego encierra su código en un bloque estándar de markdown. Sigue este formato exacto para cada archivo:
             
             Ruta: [ruta_relativa_del_archivo_desde_el_proyecto]
             ```python (o de acuerdo al lenguaje del archivo: typescript, tsx, css, html, etc.)
@@ -515,7 +543,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             # FASE 3: EL ANALISTA QA (MODO AUDITORÍA DIRECTA)
             console.print("[bold magenta]🕵️‍♂️ Fase 3: El Analista QA está auditando el trabajo...[/bold magenta]")
             prompt_qa = f"""
-            Eres un Analista QA de Software con 20 años de experiencia.
+            Eres un Analista QA de Software Senior con 20 años de experiencia.
             El Developer acaba de programar los siguientes archivos: {', '.join(archivos_escritos)}
             
             PLAN ORIGINAL:
@@ -524,7 +552,13 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             RESPUESTA DEL DEVELOPER:
             {resultado_dev}
             
-            Genera un REPORTE DE AUDITORÍA indicando si apruebas o rechazas la construcción de los archivos programados.
+            Realiza una auditoría estricta de la calidad técnica:
+            1. Valida que el código no contenga placeholders incompletos.
+            2. Revisa que el tipado estático (type hints en Python y TypeScript en React) sea estricto y correcto.
+            3. Verifica que todo acceso a base de datos tenga un try-except-finally con cierre seguro de conexiones.
+            4. Diseña y especifica el plan de pruebas unitarias (`pytest` y `jest`) para asegurar la cobertura.
+            
+            Genera un REPORTE DE AUDITORÍA riguroso indicando si apruebas o rechazas la construcción de los archivos programados.
             """
             
             t_start = time.time()
@@ -544,7 +578,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Y el reporte del Analista QA:
             {reporte_qa}
             
-            Escribe un manual de documentación en Markdown para este proyecto.
+            Escribe un manual de documentación en Markdown profesional (README.md) que detalle la arquitectura limpia implementada, la descripción de capas lógicas, los lenguajes, instrucciones de configuración de base de datos sqlite y comandos de ejecución para el frontend y backend.
             """
             
             t_start = time.time()
