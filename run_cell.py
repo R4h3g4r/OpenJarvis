@@ -27,8 +27,8 @@ else:
     REQUERIMIENTO = "Prueba local: Agregar archivo database.py con SQLAlchemy para SQLite."
 
 def es_tarea_analisis(tarea: str) -> bool:
-    # Palabras clave que indican que es una tarea de revisión, análisis o planificación
-    keywords = ["revis", "analiz", "plan de", "plan de mejoras", "sugerencia", "estudi", "auditar", "diagnóstico", "reporte", "observaciones"]
+    # Soporte ultra-robusto contra typos de usuarios como "analices" (con c) o "plan me"
+    keywords = ["revis", "analiz", "analic", "plan", "mejora", "sugerencia", "estudi", "auditar", "diagnóstico", "reporte", "observaciones"]
     return any(keyword in tarea.lower() for keyword in keywords)
 
 def obtener_contexto_codigo(ruta: str) -> str:
@@ -311,7 +311,7 @@ def run_software_factory(ruta: str, tarea: str, model_text: str = MODELO_BASE, m
             Aquí tienes el plan del Arquitecto:
             {plan_arquitecto}
             
-            Y el reporte del Analista QA confirmando la existencia de los archivos:
+            Y el reporte del Analista QA confirming la existencia de los archivos:
             {reporte_qa}
             
             Usa tu herramienta `file_write` para SOBRESCRIBIR o CREAR el archivo `{readme_path}`.
