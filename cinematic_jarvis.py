@@ -51,7 +51,33 @@ def main():
         "==================================================\n"
         "           SISTEMA JARVIS EN LÍNEA (LOCAL)        \n"
         "==================================================\n"
-        "  • Oído: EarTool / Teclado (Híbrido)\n"
+        "  • Oído: EarTool / Teclado (Híbrido Seleccionable)\n"
+        "  • Cerebro: LLaMA 3.1 8B (vía Ollama Local)\n"
+        "  • Voz: Apple macOS Studio-quality TTS\n"
+        "=================================================="
+        "[/bold cyan]",
+        border_style="cyan"
+    ))
+    
+    # Selección de Interfaz Interactiva
+    console.print("[bold yellow]🤖 Seleccione su método de interfaz, señor:[/bold yellow]")
+    console.print("  [bold cyan][1][/bold cyan] [bold white]Modo Voz[/bold white] (Hablar por Micrófono)")
+    console.print("  [bold cyan][2][/bold cyan] [bold white]Modo Híbrido[/bold white] (Escribir por Teclado + Voz de Jarvis)")
+    
+    try:
+        seleccion = console.input("\n[bold white]📋 Elija una opción (1 o 2) [Por defecto: 2]: [/bold white]").strip()
+        if not seleccion:
+            seleccion = "2"
+    except (KeyboardInterrupt, EOFError):
+        seleccion = "2"
+        
+    os.system("clear")
+    console.print(Panel(
+        "[bold cyan]"
+        "==================================================\n"
+        "           SISTEMA JARVIS EN LÍNEA (LOCAL)        \n"
+        "==================================================\n"
+        "  • Oído: EarTool / Teclado (Híbrido Seleccionable)\n"
         "  • Cerebro: LLaMA 3.1 8B (vía Ollama Local)\n"
         "  • Voz: Apple macOS Studio-quality TTS\n"
         "=================================================="
@@ -62,18 +88,24 @@ def main():
     # Inicialización del SDK
     console.print("[yellow]⚡ Cargando redes neuronales de Jarvis...[/yellow]")
     
-    # Verificamos si hay micrófono físico
-    has_mic = check_microphone_available()
+    has_mic = False
+    ear = None
     
-    try:
-        ear = None
+    if seleccion == "1":
+        has_mic = check_microphone_available()
         if has_mic:
             ear = EarTool()
-            console.print("[green]✓ Micrófono detectado de forma exitosa.[/green]")
+            console.print("[green]✓ Modo Voz Activo: Micrófono detectado e inicializado.[/green]")
         else:
-            console.print("[bold yellow]⚠️  No se detectaron micrófonos (típico en Mac mini).[/bold yellow]")
-            console.print("[bold yellow]👉 Activando modo híbrido: Entrada por Teclado + Salida por Voz.[/bold yellow]\n")
+            console.print("[bold red]⚠️ No se detectaron micrófonos físicos activos.[/bold red]")
+            console.print("[bold yellow]👉 Forzando Modo Híbrido (Teclado) por seguridad.[/bold yellow]\n")
+            seleccion = "2"
             
+    if seleccion == "2":
+        console.print("[green]✓ Modo Híbrido Activo: Entrada por teclado habilitada.[/green]")
+        console.print("[green]✓ Salida de Audio: Sintetizador de voz de macOS activo.[/green]\n")
+        
+    try:
         # Test connection with SDK
         with Jarvis() as j:
             model = j.config.intelligence.default_model
@@ -82,12 +114,15 @@ def main():
         console.print(f"[bold red]Error al conectar con OpenJarvis Core o Ollama: {e}[/bold red]")
         sys.exit(1)
         
-    speak("Sistemas en línea, señor. Todos los núcleos locales están operativos. He detectado que estamos usando una Mac mini, por lo que he habilitado el teclado para recibir sus órdenes, pero seguiré respondiéndole con mi sintetizador de voz. ¿En qué puedo ayudarle hoy?")
+    if seleccion == "1":
+        speak("Sistemas en línea, señor. Todos los núcleos locales están operativos. He activado los receptores de audio. ¿En qué puedo ayudarle hoy?")
+    else:
+        speak("Sistemas en línea, señor. He habilitado el teclado para recibir sus órdenes, pero seguiré respondiéndole con mi sintetizador de voz. ¿En qué puedo ayudarle hoy?")
     
     # El bucle de interacción de voz infinito
     with Jarvis() as j:
         while True:
-            if has_mic and ear is not None:
+            if seleccion == "1" and has_mic and ear is not None:
                 # Escuchamos al usuario usando el micrófono
                 user_text = listen_mic(ear, duration=5)
                 if not user_text or user_text == "No se detectó voz.":
