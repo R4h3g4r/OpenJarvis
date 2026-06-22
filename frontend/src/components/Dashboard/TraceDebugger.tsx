@@ -74,7 +74,7 @@ function TraceCard({ trace, isActive, onClick }: { trace: TraceSummary; isActive
 
 function StepDetail({ step, index }: { step: TraceStep; index: number }) {
   const [expanded, setExpanded] = useState(false);
-  const dataEntries = Object.entries(step.data).filter(([_, v]) => v != null);
+  const dataEntries = Object.entries(step.data || {}).filter(([_, v]) => v != null);
 
   return (
     <div
